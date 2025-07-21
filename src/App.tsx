@@ -4,7 +4,7 @@ import { PlanetCard } from './components/PlanetCard';
 import { PlanetModal } from './components/PlanetModal';
 import { SearchFilter } from './components/SearchFilter';
 import { PlanetSearch } from './components/PlanetSearch';
-import { PlanetGrid } from './components/PlanetGrid';
+import { SimplePlanetList } from './components/SimplePlanetList';
 import { BackendStatus } from './components/BackendStatus';
 import { exoplanets } from './data/exoplanets';
 import { clusterPlanets, ExtendedExoplanet } from './utils/exoplanetAnalysis';
@@ -229,10 +229,12 @@ function App() {
               {/* NASA Archive View */}
               <div className="mb-8 text-center">
                 <h2 className="text-2xl font-bold text-white mb-4">NASA Exoplanet Archive</h2>
-                <PlanetSearch onPlanetSelect={handleNasaPlanetSelect} />
               </div>
               
-              <PlanetGrid onPlanetSelect={setSelectedPlanet} />
+              <SimplePlanetList onPlanetSelect={(planetName) => {
+                // For now just show an alert with the planet name
+                alert(`Selected: ${planetName}`);
+              }} />
             </>
           ) : (
             <>
