@@ -119,7 +119,7 @@ export function calculateHabitabilityScore(planet: Exoplanet): number {
   
   const [hzInner, hzOuter] = habitableZoneBounds(starTemp);
   const inHz = hzInner <= orbitalDistance && orbitalDistance <= hzOuter;
-  const hzFactor = inHz ? 1.0 : 0.0;
+  const hzFactor = inHz ? 1.0 : Math.max(0.1, 1.0 - Math.abs(orbitalDistance - (hzInner + hzOuter) / 2) / ((hzOuter - hzInner) / 2));
 
   // Radius factor (Earth-like is optimal)
   const radiusFactor = Math.exp(-Math.pow(planet.radius - 1.0, 2) / (2 * Math.pow(0.3, 2)));
@@ -144,8 +144,14 @@ export function calculateHabitabilityScore(planet: Exoplanet): number {
     hostStarAge
   );
 
-  const scoreRaw = (hzFactor * 0.3) + (radiusFactor * 0.2) + (massFactor * 0.2) + (tempFactor * 0.15) + (waterPotential * 0.1) + (radiationPenalty * 0.05);
-  return Math.max(0, Math.min(10, scoreRaw * 10));
+  // Biosignature bonus
+  const biosignatureBonus = planet.biosignatures.length > 0 ? 0.5 + (planet.biosignatures.length * 0.2) : 0;
+  
+  const scoreRaw = (hzFactor * 3.0) + (radiusFactor * 2.0) + (massFactor * 2.0) + (tempFactor * 1.5) + (waterPotential * 1.0) + (radiationPenalty * 0.5) + biosignatureBonus;
+  const finalScore = Math.max(0, Math.min(10, scoreRaw));
+  
+  // Round to 1 decimal place
+  return Math.round(finalScore * 10) / 10;
 }
 
 /**

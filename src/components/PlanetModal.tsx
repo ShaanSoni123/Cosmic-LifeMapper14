@@ -62,7 +62,7 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                 <div className="flex items-center gap-2">
                   <span className="text-gray-400">Habitability:</span>
                   <span className={`text-xl font-bold ${getHabitabilityColor(planet.habitabilityScore)}`}>
-                    {planet.habitabilityScore}/10
+                    {planet.habitabilityScore.toFixed(1)}/10
                   </span>
                 </div>
                 

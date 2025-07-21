@@ -76,7 +76,7 @@ export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick }) => {
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">Habitability</span>
             <span className={`text-sm font-bold ${getHabitabilityColor(planet.habitabilityScore)}`}>
-              {planet.habitabilityScore}/10
+              {planet.habitabilityScore.toFixed(1)}/10
             </span>
           </div>
           
