@@ -328,7 +328,7 @@ def cluster_planets(
 
     logging.info(f"Performed clustering into {n_clusters} groups.")
 
-    return data_clustered, kmeans, pca
+    return data_clustered, kmeans_model, pca_model
 
 def interpret_cluster(cluster_label: int) -> str:
     """
