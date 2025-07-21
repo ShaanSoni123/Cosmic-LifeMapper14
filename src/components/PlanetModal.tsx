@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Globe, Clock, Thermometer, Star, Zap, Calendar, Weight, Ruler, Activity, Droplets, Shield, Target } from 'lucide-react';
+import { X, Globe, Clock, Thermometer, Star, Zap, Calendar, Weight, Ruler, Activity, Droplets, Shield, Target, Info } from 'lucide-react';
 import { ExtendedExoplanet, generateDetailedReport } from '../utils/exoplanetAnalysis';
 
 interface PlanetModalProps {
