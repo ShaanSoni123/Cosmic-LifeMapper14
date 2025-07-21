@@ -3,8 +3,11 @@ import { StarField } from './components/StarField';
 import { PlanetCard } from './components/PlanetCard';
 import { PlanetModal } from './components/PlanetModal';
 import { SearchFilter } from './components/SearchFilter';
+import { PlanetSearch } from './components/PlanetSearch';
+import { PlanetGrid } from './components/PlanetGrid';
 import { exoplanets } from './data/exoplanets';
 import { clusterPlanets, ExtendedExoplanet } from './utils/exoplanetAnalysis';
+import { apiService } from './services/api';
 import { Telescope, Globe, Zap } from 'lucide-react';
 
 function App() {
@@ -12,12 +15,75 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('distance');
   const [filterBy, setFilterBy] = useState('all');
+  const [viewMode, setViewMode] = useState<'local' | 'nasa'>('nasa');
+  const [nasaStats, setNasaStats] = useState({ total_planets: 0 });
 
   // Process exoplanets with extended analysis
   const processedPlanets = useMemo(() => {
     return clusterPlanets(exoplanets);
   }, []);
 
+  // Load NASA stats
+  React.useEffect(() => {
+    const loadStats = async () => {
+      const stats = await apiService.getPlanetStats();
+      if (stats) {
+        setNasaStats(stats);
+      }
+    };
+    loadStats();
+  }, []);
+
+  const handleNasaPlanetSelect = async (planetName: string) => {
+    const planetDetails = await apiService.getPlanetDetails(planetName);
+    if (planetDetails) {
+      // Convert to ExtendedExoplanet format for modal
+      const extendedPlanet: ExtendedExoplanet = {
+        id: planetDetails.pl_name.toLowerCase().replace(/\s+/g, '-'),
+        name: planetDetails.pl_name,
+        distanceFromEarth: 100, // Default
+        orbitalPeriod: planetDetails.pl_orbper || 365,
+        temperature: planetDetails.pl_eqt || planetDetails.st_teff || 288,
+        starType: getStarType(planetDetails.st_teff || 5778),
+        biosignatures: [],
+        radius: planetDetails.pl_rade || 1.0,
+        mass: planetDetails.pl_bmasse || 1.0,
+        discoveryYear: planetDetails.disc_year || 2000,
+        constellation: 'Unknown',
+        habitabilityScore: planetDetails.habitability_score,
+        surfaceTemperature: planetDetails.pl_eqt || planetDetails.st_teff || 288,
+        surfaceGravity: (planetDetails.pl_bmasse || 1.0) / Math.pow(planetDetails.pl_rade || 1.0, 2),
+        waterRetentionPotential: Math.min(1, planetDetails.habitability_score / 100),
+        radiationHazardIndex: Math.max(0, 1 - planetDetails.habitability_score / 100),
+        cluster: getCluster(planetDetails.habitability_score),
+        clusterLabel: getClusterLabel(planetDetails.habitability_score),
+        inHabitableZone: planetDetails.in_habitable_zone
+      };
+      setSelectedPlanet(extendedPlanet);
+    }
+  };
+
+  const getStarType = (temp: number): string => {
+    if (temp > 7500) return 'A';
+    if (temp > 6000) return 'F';
+    if (temp > 5200) return 'G';
+    if (temp > 3700) return 'K';
+    return 'M';
+  };
+
+  const getCluster = (score: number): number => {
+    if (score >= 70) return 0;
+    if (score >= 50) return 1;
+    if (score >= 25) return 2;
+    return 3;
+  };
+
+  const getClusterLabel = (score: number): string => {
+    if (score >= 70) return "Very High Habitability Potential";
+    if (score >= 50) return "Moderate to High Habitability Potential";
+    if (score >= 25) return "Low Habitability Potential";
+    return "Very Low Habitability Potential";
+  };
   // Filter and sort planets
   const filteredAndSortedPlanets = useMemo(() => {
     let filtered = processedPlanets.filter(planet => {
@@ -81,26 +147,64 @@ function App() {
                 </div>
                 <div>
                   <h1 className="text-3xl font-bold text-white">Exoplanet Explorer</h1>
-                  <p className="text-gray-300">Discover distant worlds beyond our solar system</p>
+                  <p className="text-gray-300">
+                    {viewMode === 'nasa' 
+                      ? `Explore ${nasaStats.total_planets.toLocaleString()}+ exoplanets from NASA Archive`
+                      : 'Discover distant worlds beyond our solar system'
+                    }
+                  </p>
                 </div>
               </div>
               
-              <div className="hidden md:flex items-center gap-6 text-sm">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-cyan-400">{stats.totalPlanets}</div>
-                  <div className="text-gray-400">Total Planets</div>
+              <div className="flex items-center gap-4">
+                {/* View Mode Toggle */}
+                <div className="flex bg-white/10 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('nasa')}
+                    className={`px-3 py-1 rounded text-sm transition-colors ${
+                      viewMode === 'nasa' 
+                        ? 'bg-cyan-600 text-white' 
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                  >
+                    NASA Archive
+                  </button>
+                  <button
+                    onClick={() => setViewMode('local')}
+                    className={`px-3 py-1 rounded text-sm transition-colors ${
+                      viewMode === 'local' 
+                        ? 'bg-cyan-600 text-white' 
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                  >
+                    Curated
+                  </button>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-400">{stats.highHabitability}</div>
-                  <div className="text-gray-400">High Habitability</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-400">{stats.withBiosignatures}</div>
-                  <div className="text-gray-400">With Biosignatures</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-400">{stats.inHabitableZone}</div>
-                  <div className="text-gray-400">In Habitable Zone</div>
+
+                {/* Stats */}
+                <div className="hidden md:flex items-center gap-6 text-sm">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-cyan-400">
+                      {viewMode === 'nasa' ? nasaStats.total_planets.toLocaleString() : stats.totalPlanets}
+                    </div>
+                    <div className="text-gray-400">Total Planets</div>
+                  </div>
+                  {viewMode === 'local' && (
+                    <>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-400">{stats.highHabitability}</div>
+                        <div className="text-gray-400">High Habitability</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-yellow-400">{stats.withBiosignatures}</div>
+                        <div className="text-gray-400">With Biosignatures</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-400">{stats.inHabitableZone}</div>
+                        <div className="text-gray-400">In Habitable Zone</div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -109,44 +213,89 @@ function App() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Search and Filter */}
-          <SearchFilter
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            filterBy={filterBy}
-            onFilterChange={setFilterBy}
-          />
-
-          {/* Results Summary */}
-          <div className="mb-6">
-            <p className="text-gray-300">
-              Showing {filteredAndSortedPlanets.length} of {processedPlanets.length} exoplanets
-            </p>
-          </div>
-
-          {/* Planet Grid */}
-          {filteredAndSortedPlanets.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredAndSortedPlanets.map((planet) => (
-                <PlanetCard
-                  key={planet.id}
-                  planet={planet}
-                  onClick={() => setSelectedPlanet(planet)}
-                />
-              ))}
-            </div>
+          {viewMode === 'nasa' ? (
+            <>
+              {/* NASA Archive View */}
+              <div className="mb-8 text-center">
+                <h2 className="text-2xl font-bold text-white mb-4">NASA Exoplanet Archive</h2>
+                <PlanetSearch onPlanetSelect={handleNasaPlanetSelect} />
+              </div>
+              
+              <PlanetGrid onPlanetSelect={setSelectedPlanet} />
+            </>
           ) : (
-            <div className="text-center py-12">
-              <Globe className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-300 mb-2">No planets found</h3>
-              <p className="text-gray-500">Try adjusting your search or filter criteria</p>
-            </div>
+            <>
+              {/* Local Curated View */}
+              <SearchFilter
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                filterBy={filterBy}
+                onFilterChange={setFilterBy}
+              />
+
+              <div className="mb-6">
+                <p className="text-gray-300">
+                  Showing {filteredAndSortedPlanets.length} of {processedPlanets.length} curated exoplanets
+                </p>
+              </div>
+
+              {filteredAndSortedPlanets.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {filteredAndSortedPlanets.map((planet) => (
+                    <PlanetCard
+                      key={planet.id}
+                      planet={planet}
+                      onClick={() => setSelectedPlanet(planet)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center">
+                  <Globe className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-300 mb-2">No planets found</h3>
+                  <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+                </div>
+              )}
+            </>
           )}
 
           {/* Quick Stats Cards for Mobile */}
-          <div className="md:hidden mt-8 grid grid-cols-2 gap-4">
+          {viewMode === 'local' && (
+            <div className="md:hidden mt-8 grid grid-cols-2 gap-4">
+              <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Globe className="w-4 h-4 text-cyan-400" />
+                  <span className="text-sm text-gray-400">Total</span>
+                </div>
+                <div className="text-xl font-bold text-white">{stats.totalPlanets}</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="w-4 h-4 text-green-400" />
+                  <span className="text-sm text-gray-400">High Habitability</span>
+                </div>
+                <div className="text-xl font-bold text-white">{stats.highHabitability}</div>
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* Planet Modal */}
+        {selectedPlanet && (
+          <PlanetModal
+            planet={selectedPlanet}
+            isOpen={!!selectedPlanet}
+            onClose={() => setSelectedPlanet(null)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;
             <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-4 h-4 text-cyan-400" />
