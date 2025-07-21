@@ -5,6 +5,7 @@ import { PlanetModal } from './components/PlanetModal';
 import { SearchFilter } from './components/SearchFilter';
 import { PlanetSearch } from './components/PlanetSearch';
 import { PlanetGrid } from './components/PlanetGrid';
+import { BackendStatus } from './components/BackendStatus';
 import { exoplanets } from './data/exoplanets';
 import { clusterPlanets, ExtendedExoplanet } from './utils/exoplanetAnalysis';
 import { apiService } from './services/api';
@@ -17,6 +18,7 @@ function App() {
   const [filterBy, setFilterBy] = useState('all');
   const [viewMode, setViewMode] = useState<'local' | 'nasa'>('nasa');
   const [nasaStats, setNasaStats] = useState({ total_planets: 0 });
+  const [backendAvailable, setBackendAvailable] = useState(false);
 
   // Process exoplanets with extended analysis
   const processedPlanets = useMemo(() => {
@@ -26,9 +28,13 @@ function App() {
   // Load NASA stats
   React.useEffect(() => {
     const loadStats = async () => {
-      const stats = await apiService.getPlanetStats();
-      if (stats) {
-        setNasaStats(stats);
+      try {
+        const stats = await apiService.getPlanetStats();
+        if (stats) {
+          setNasaStats(stats);
+        }
+      } catch (error) {
+        console.warn('Stats service unavailable:', error);
       }
     };
     loadStats();
@@ -158,16 +164,18 @@ function App() {
               
               <div className="flex items-center gap-4">
                 {/* View Mode Toggle */}
+                <BackendStatus onStatusChange={setBackendAvailable} />
                 <div className="flex bg-white/10 rounded-lg p-1">
                   <button
                     onClick={() => setViewMode('nasa')}
-                    className={`px-3 py-1 rounded text-sm transition-colors ${
+                    disabled={!backendAvailable}
+                    className={`px-3 py-1 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                       viewMode === 'nasa' 
                         ? 'bg-cyan-600 text-white' 
                         : 'text-gray-300 hover:text-white'
                     }`}
                   >
-                    NASA Archive
+                    NASA Archive {!backendAvailable && '(Starting...)'}
                   </button>
                   <button
                     onClick={() => setViewMode('local')}
@@ -185,7 +193,10 @@ function App() {
                 <div className="hidden md:flex items-center gap-6 text-sm">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-cyan-400">
-                      {viewMode === 'nasa' ? (nasaStats.total_planets || 0).toLocaleString() : stats.totalPlanets}
+                      {viewMode === 'nasa' ? 
+                        (backendAvailable ? (nasaStats.total_planets || 0).toLocaleString() : '...') : 
+                        stats.totalPlanets
+                      }
                     </div>
                     <div className="text-gray-400">Total Planets</div>
                   </div>

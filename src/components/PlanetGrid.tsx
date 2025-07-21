@@ -14,6 +14,7 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalPlanets, setTotalPlanets] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [backendAvailable, setBackendAvailable] = useState(true);
 
   // Simple planet card component for NASA data
   const NasaPlanetCard: React.FC<{ planet: PlanetDetails; onClick: () => void }> = ({ planet, onClick }) => {
@@ -127,6 +128,16 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
     setError(null);
     
     try {
+      // Check if backend is available
+      const isHealthy = await apiService.checkHealth();
+      if (!isHealthy) {
+        setBackendAvailable(false);
+        setError('Backend service is starting up. Please wait a moment and try again.');
+        setLoading(false);
+        return;
+      }
+      
+      setBackendAvailable(true);
       const response = await apiService.getAllPlanets(page, 50);
       if (response) {
         setPlanets(response.planets);
@@ -227,14 +238,25 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <Database className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p className="text-red-300 mb-2">Error loading planets</p>
+          <Database className={`w-12 h-12 mx-auto mb-4 ${backendAvailable ? 'text-red-400' : 'text-yellow-400'}`} />
+          <p className={`mb-2 ${backendAvailable ? 'text-red-300' : 'text-yellow-300'}`}>
+            {backendAvailable ? 'Error loading planets' : 'Backend Starting Up'}
+          </p>
           <p className="text-gray-500 text-sm mb-4">{error}</p>
+          {!backendAvailable && (
+            <p className="text-gray-400 text-xs mb-4">
+              The Flask backend is initializing and connecting to NASA's servers...
+            </p>
+          )}
           <button
             onClick={() => loadPlanets(currentPage)}
-            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors"
+            className={`px-4 py-2 text-white rounded-lg transition-colors ${
+              backendAvailable 
+                ? 'bg-cyan-600 hover:bg-cyan-700' 
+                : 'bg-yellow-600 hover:bg-yellow-700'
+            }`}
           >
-            Try Again
+            {backendAvailable ? 'Try Again' : 'Check Again'}
           </button>
         </div>
       </div>

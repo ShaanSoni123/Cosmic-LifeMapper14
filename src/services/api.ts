@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? '/api' 
+  : 'http://localhost:5000/api';
 
 export interface PlanetSearchResult {
   name: string;
@@ -43,46 +45,78 @@ export interface PlanetStats {
 class ApiService {
   async searchPlanets(query: string, limit: number = 5): Promise<PlanetSearchResult[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/planets/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+      const response = await fetch(`${API_BASE_URL}/planets/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       if (!response.ok) throw new Error('Search failed');
       const data = await response.json();
       return data.results;
     } catch (error) {
-      console.error('Error searching planets:', error);
+      console.warn('Search service unavailable, using fallback:', error);
       return [];
     }
   }
 
   async getPlanetDetails(planetName: string): Promise<PlanetDetails | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/planets/${encodeURIComponent(planetName)}`);
+      const response = await fetch(`${API_BASE_URL}/planets/${encodeURIComponent(planetName)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       if (!response.ok) throw new Error('Planet not found');
       return await response.json();
     } catch (error) {
-      console.error('Error fetching planet details:', error);
+      console.warn('Planet details service unavailable:', error);
       return null;
     }
   }
 
   async getAllPlanets(page: number = 1, perPage: number = 100): Promise<PlanetsResponse | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/planets/all?page=${page}&per_page=${perPage}`);
+      const response = await fetch(`${API_BASE_URL}/planets/all?page=${page}&per_page=${perPage}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       if (!response.ok) throw new Error('Failed to fetch planets');
       return await response.json();
     } catch (error) {
-      console.error('Error fetching all planets:', error);
+      console.warn('Planets service unavailable:', error);
       return null;
     }
   }
 
   async getPlanetStats(): Promise<PlanetStats | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/planets/stats`);
+      const response = await fetch(`${API_BASE_URL}/planets/stats`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       if (!response.ok) throw new Error('Failed to fetch stats');
       return await response.json();
     } catch (error) {
-      console.error('Error fetching planet stats:', error);
+      console.warn('Stats service unavailable:', error);
       return null;
+    }
+  }
+
+  async checkHealth(): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/health`, {
+        method: 'GET',
+        timeout: 5000,
+      });
+      return response.ok;
+    } catch (error) {
+      return false;
     }
   }
 }
