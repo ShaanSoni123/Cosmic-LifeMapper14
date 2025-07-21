@@ -128,6 +128,8 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
     setError(null);
     
     try {
+      console.log(`Loading planets page ${page}...`);
+      
       // Check if backend is available
       const isHealthy = await apiService.checkHealth();
       if (!isHealthy) {
@@ -138,17 +140,18 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
       }
       
       setBackendAvailable(true);
-      const response = await apiService.getAllPlanets(page, 50);
+      const response = await apiService.getAllPlanets(page, 100);
       if (response) {
+        console.log(`Loaded ${response.planets.length} planets for page ${page}`);
         setPlanets(response.planets);
         setTotalPages(response.total_pages);
         setTotalPlanets(response.total);
         setCurrentPage(page);
       } else {
-        setError('Failed to load planets');
+        setError('Failed to load planets from NASA Archive');
       }
     } catch (err) {
-      setError('Error loading planets');
+      setError('Error connecting to NASA Exoplanet Archive');
       console.error('Error loading planets:', err);
     } finally {
       setLoading(false);
@@ -156,6 +159,7 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
   };
 
   useEffect(() => {
+    console.log('PlanetGrid component mounted, loading first page...');
     loadPlanets(1);
   }, []);
 
@@ -218,6 +222,7 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
+      console.log(`Changing to page ${page}`);
       loadPlanets(page);
     }
   };
@@ -228,7 +233,7 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
           <p className="text-gray-300">Loading exoplanets from NASA Archive...</p>
-          <p className="text-gray-500 text-sm mt-2">This may take a moment</p>
+          <p className="text-gray-500 text-sm mt-2">Extracting planet data using fuzzy matching</p>
         </div>
       </div>
     );
@@ -334,7 +339,7 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
       {loading && (
         <div className="flex items-center justify-center mt-4">
           <Loader2 className="w-6 h-6 text-cyan-400 animate-spin mr-2" />
-          <span className="text-gray-300">Loading...</span>
+          <span className="text-gray-300">Loading planets...</span>
         </div>
       )}
     </div>
