@@ -56,7 +56,7 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           className="pl-10 pr-8 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent appearance-none cursor-pointer"
         >
           <option value="all" className="bg-gray-800">All Planets</option>
-          <option value="high-habitability" className="bg-gray-800">High Habitability (5+)</option>
+          <option value="high-habitability" className="bg-gray-800">High Habitability (50+)</option>
           <option value="with-biosignatures" className="bg-gray-800">With Biosignatures</option>
           <option value="nearby" className="bg-gray-800">Nearby (&lt;50 ly)</option>
           <option value="in-habitable-zone" className="bg-gray-800">In Habitable Zone</option>

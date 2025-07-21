@@ -19,8 +19,8 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
   };
 
   const getHabitabilityColor = (score: number) => {
-    if (score >= 8) return 'text-green-400';
-    if (score >= 6) return 'text-yellow-400';
+    if (score >= 80) return 'text-green-400';
+    if (score >= 60) return 'text-yellow-400';
     return 'text-red-400';
   };
 
@@ -234,7 +234,7 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                 </h4>
                 <div className="text-right">
                   <div className={`text-3xl font-bold ${getHabitabilityColor(planet.habitabilityScore)}`}>
-                    {planet.habitabilityScore.toFixed(1)}/10
+                    {planet.habitabilityScore.toFixed(1)}/100
                   </div>
                   <div className="text-sm text-gray-400">Composite Score</div>
                 </div>
@@ -243,12 +243,12 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
               <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
                 <div
                   className={`h-3 rounded-full transition-all duration-1000 ${
-                    planet.habitabilityScore >= 7 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
-                    planet.habitabilityScore >= 5 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' :
-                    planet.habitabilityScore >= 2.5 ? 'bg-gradient-to-r from-orange-500 to-red-400' :
+                    planet.habitabilityScore >= 70 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
+                    planet.habitabilityScore >= 50 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' :
+                    planet.habitabilityScore >= 25 ? 'bg-gradient-to-r from-orange-500 to-red-400' :
                     'bg-gradient-to-r from-red-500 to-red-600'
                   }`}
-                  style={{ width: `${planet.habitabilityScore * 10}%` }}
+                  style={{ width: `${planet.habitabilityScore}%` }}
                 />
               </div>
               

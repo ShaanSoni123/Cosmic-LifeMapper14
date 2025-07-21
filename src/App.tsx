@@ -26,7 +26,7 @@ function App() {
       
       switch (filterBy) {
         case 'high-habitability':
-          return matchesSearch && planet.habitabilityScore >= 5;
+          return matchesSearch && planet.habitabilityScore >= 50;
         case 'with-biosignatures':
           return matchesSearch && planet.biosignatures.length > 0;
         case 'nearby':
@@ -59,7 +59,7 @@ function App() {
 
   const stats = useMemo(() => {
     const totalPlanets = processedPlanets.length;
-    const highHabitability = processedPlanets.filter(p => p.habitabilityScore >= 5).length;
+    const highHabitability = processedPlanets.filter(p => p.habitabilityScore >= 50).length;
     const withBiosignatures = processedPlanets.filter(p => p.biosignatures.length > 0).length;
     const inHabitableZone = processedPlanets.filter(p => p.inHabitableZone).length;
     

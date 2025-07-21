@@ -16,9 +16,9 @@ export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick }) => {
   };
 
   const getHabitabilityColor = (score: number) => {
-    if (score >= 7) return 'text-green-400';
-    if (score >= 5) return 'text-yellow-400';
-    if (score >= 2.5) return 'text-orange-400';
+    if (score >= 70) return 'text-green-400';
+    if (score >= 50) return 'text-yellow-400';
+    if (score >= 25) return 'text-orange-400';
     return 'text-red-400';
   };
 
@@ -76,18 +76,18 @@ export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick }) => {
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">Habitability</span>
             <span className={`text-sm font-bold ${getHabitabilityColor(planet.habitabilityScore)}`}>
-              {planet.habitabilityScore.toFixed(1)}/10
+              {planet.habitabilityScore.toFixed(1)}/100
             </span>
           </div>
           
           <div className="mt-1 w-full bg-gray-700 rounded-full h-1.5">
             <div
               className={`h-1.5 rounded-full ${
-                planet.habitabilityScore >= 7 ? 'bg-green-400' :
-                planet.habitabilityScore >= 5 ? 'bg-yellow-400' :
-                planet.habitabilityScore >= 2.5 ? 'bg-orange-400' : 'bg-red-400'
+                planet.habitabilityScore >= 70 ? 'bg-green-400' :
+                planet.habitabilityScore >= 50 ? 'bg-yellow-400' :
+                planet.habitabilityScore >= 25 ? 'bg-orange-400' : 'bg-red-400'
               }`}
-              style={{ width: `${planet.habitabilityScore * 10}%` }}
+              style={{ width: `${planet.habitabilityScore}%` }}
             />
           </div>
         </div>

@@ -148,9 +148,9 @@ export function calculateHabitabilityScore(planet: Exoplanet): number {
   const biosignatureBonus = planet.biosignatures.length > 0 ? 0.5 + (planet.biosignatures.length * 0.2) : 0;
   
   const scoreRaw = (hzFactor * 3.0) + (radiusFactor * 2.0) + (massFactor * 2.0) + (tempFactor * 1.5) + (waterPotential * 1.0) + (radiationPenalty * 0.5) + biosignatureBonus;
-  const finalScore = Math.max(0, Math.min(10, scoreRaw));
+  const finalScore = Math.max(0, Math.min(100, scoreRaw * 10)); // Convert to 100-point scale
   
-  // Round to 1 decimal place
+  // Round to 1 decimal place  
   return Math.round(finalScore * 10) / 10;
 }
 
@@ -214,13 +214,13 @@ export function clusterPlanets(planets: Exoplanet[]): ExtendedExoplanet[] {
     let cluster: number;
     let clusterLabel: string;
     
-    if (habitabilityScore >= 7) {
+    if (habitabilityScore >= 70) {
       cluster = 0;
       clusterLabel = "Very High Habitability Potential";
-    } else if (habitabilityScore >= 5) {
+    } else if (habitabilityScore >= 50) {
       cluster = 1;
       clusterLabel = "Moderate to High Habitability Potential";
-    } else if (habitabilityScore >= 2.5) {
+    } else if (habitabilityScore >= 25) {
       cluster = 2;
       clusterLabel = "Low Habitability Potential";
     } else {
