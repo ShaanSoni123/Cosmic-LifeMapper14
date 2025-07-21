@@ -185,7 +185,7 @@ function App() {
                 <div className="hidden md:flex items-center gap-6 text-sm">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-cyan-400">
-                      {viewMode === 'nasa' ? nasaStats.total_planets.toLocaleString() : stats.totalPlanets}
+                      {viewMode === 'nasa' ? (nasaStats.total_planets || 0).toLocaleString() : stats.totalPlanets}
                     </div>
                     <div className="text-gray-400">Total Planets</div>
                   </div>

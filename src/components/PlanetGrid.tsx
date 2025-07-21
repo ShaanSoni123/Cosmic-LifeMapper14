@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ChevronLeft, ChevronRight, Database } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Database, Globe, Zap } from 'lucide-react';
 import { apiService, PlanetDetails } from '../services/api';
-import { PlanetCard } from './PlanetCard';
 import { ExtendedExoplanet } from '../utils/exoplanetAnalysis';
 
 interface PlanetGridProps {
@@ -15,6 +14,113 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalPlanets, setTotalPlanets] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  // Simple planet card component for NASA data
+  const NasaPlanetCard: React.FC<{ planet: PlanetDetails; onClick: () => void }> = ({ planet, onClick }) => {
+    const getTemperatureColor = (temp?: number) => {
+      if (!temp) return 'from-gray-500 to-gray-300';
+      if (temp < 200) return 'from-blue-500 to-cyan-300';
+      if (temp < 280) return 'from-green-500 to-emerald-300';
+      if (temp < 350) return 'from-orange-500 to-yellow-300';
+      return 'from-red-500 to-pink-300';
+    };
+
+    const getHabitabilityColor = (score: number) => {
+      if (score >= 70) return 'text-green-400';
+      if (score >= 50) return 'text-yellow-400';
+      if (score >= 25) return 'text-orange-400';
+      return 'text-red-400';
+    };
+
+    return (
+      <div
+        onClick={onClick}
+        className="group relative cursor-pointer transform transition-all duration-500 hover:scale-105"
+      >
+        {/* Planet visualization */}
+        <div className="relative w-20 h-20 mx-auto mb-3">
+          <div
+            className={`absolute inset-0 rounded-full bg-gradient-to-br ${getTemperatureColor(
+              planet.pl_eqt || planet.st_teff
+            )} shadow-xl animate-pulse group-hover:animate-none transition-all duration-500`}
+            style={{
+              boxShadow: `0 0 20px rgba(${(planet.pl_eqt || planet.st_teff || 0) < 280 ? '34, 197, 94' : '239, 68, 68'}, 0.3)`,
+            }}
+          />
+          <div className="absolute inset-1 rounded-full bg-gradient-to-br from-transparent to-black/20" />
+          
+          {/* Orbital ring */}
+          <div className="absolute -inset-6 border border-white/10 rounded-full animate-spin-slow" />
+        </div>
+
+        {/* Planet info card */}
+        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 shadow-xl">
+          <h3 className="text-sm font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors truncate">
+            {planet.pl_name}
+          </h3>
+          
+          <div className="space-y-1 text-xs">
+            {planet.pl_rade && (
+              <div className="flex items-center gap-1 text-gray-300">
+                <Globe className="w-3 h-3" />
+                <span>{planet.pl_rade.toFixed(1)} R⊕</span>
+              </div>
+            )}
+            
+            {planet.pl_orbper && (
+              <div className="flex items-center gap-1 text-gray-300">
+                <span className="w-3 h-3 text-center">⏱</span>
+                <span>{planet.pl_orbper.toFixed(0)}d</span>
+              </div>
+            )}
+            
+            {(planet.pl_eqt || planet.st_teff) && (
+              <div className="flex items-center gap-1 text-gray-300">
+                <span className="w-3 h-3 text-center">🌡</span>
+                <span>{(planet.pl_eqt || planet.st_teff)?.toFixed(0)}K</span>
+              </div>
+            )}
+            
+            {planet.disc_year && (
+              <div className="flex items-center gap-1 text-gray-300">
+                <span className="w-3 h-3 text-center">📅</span>
+                <span>{planet.disc_year}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-2 pt-2 border-t border-white/20">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">Habitability</span>
+              <span className={`text-xs font-bold ${getHabitabilityColor(planet.habitability_score)}`}>
+                {planet.habitability_score}/100
+              </span>
+            </div>
+            
+            <div className="mt-1 w-full bg-gray-700 rounded-full h-1">
+              <div
+                className={`h-1 rounded-full ${
+                  planet.habitability_score >= 70 ? 'bg-green-400' :
+                  planet.habitability_score >= 50 ? 'bg-yellow-400' :
+                  planet.habitability_score >= 25 ? 'bg-orange-400' : 'bg-red-400'
+                }`}
+                style={{ width: `${planet.habitability_score}%` }}
+              />
+            </div>
+          </div>
+
+          {planet.in_habitable_zone && (
+            <div className="mt-2 pt-2 border-t border-white/20">
+              <div className="flex items-center gap-1">
+                <Zap className="w-3 h-3 text-green-400" />
+                <span className="text-xs text-green-400 font-medium">Habitable Zone</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const loadPlanets = async (page: number) => {
     setLoading(true);
@@ -150,11 +256,10 @@ export const PlanetGrid: React.FC<PlanetGridProps> = ({ onPlanetSelect }) => {
       {/* Planet Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         {planets.map((planet) => {
-          const extendedPlanet = convertToExtendedExoplanet(planet);
           return (
-            <PlanetCard
+            <NasaPlanetCard
               key={planet.pl_name}
-              planet={extendedPlanet}
+              planet={planet}
               onClick={() => handlePlanetClick(planet)}
             />
           );
