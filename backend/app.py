@@ -14,10 +14,31 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
+# Increase timeout and add retry logic
+import time
+from functools import wraps
+
+def retry_on_failure(max_retries=3, delay=1):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise e
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
+            return None
+        return wrapper
+    return decorator
+
 # Cache for planet names to avoid repeated API calls
 planet_names_cache = None
 all_planets_cache = None
 
+@retry_on_failure(max_retries=3, delay=2)
 def load_planet_names():
     """Load all planet names from NASA Exoplanet Archive"""
     global planet_names_cache
@@ -26,13 +47,13 @@ def load_planet_names():
         return planet_names_cache
     
     base_url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
-    query = "SELECT pl_name FROM pscomppars WHERE pl_name IS NOT NULL"
+    query = "SELECT DISTINCT pl_name FROM pscomppars WHERE pl_name IS NOT NULL AND default_flag = 1"
     data = {"query": query, "format": "csv"}
     headers = {"User-Agent": "Mozilla/5.0 (compatible; ExoplanetExplorer/1.0)"}
 
     try:
         logger.info("Loading planet names from NASA Exoplanet Archive...")
-        response = requests.post(base_url, data=data, headers=headers, timeout=30)
+        response = requests.post(base_url, data=data, headers=headers, timeout=60)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.text))
         planet_names_cache = df['pl_name'].dropna().unique().tolist()
@@ -42,6 +63,7 @@ def load_planet_names():
         logger.error(f"Failed to load planet names: {e}")
         return []
 
+@retry_on_failure(max_retries=2, delay=3)
 def load_all_planets():
     """Load all planet data from NASA Exoplanet Archive"""
     global all_planets_cache
@@ -51,11 +73,11 @@ def load_all_planets():
     
     base_url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
     query = """
-    SELECT pl_name, pl_rade, pl_bmasse, pl_orbper, pl_eqt, st_teff, st_age, 
+    SELECT DISTINCT pl_name, pl_rade, pl_bmasse, pl_orbper, pl_eqt, st_teff, st_age, 
            st_mass, st_dens, disc_year, pl_nespec, discoverymethod, 
            disc_locale, disc_facility, st_rad
-    FROM pscomppars 
-    WHERE pl_name IS NOT NULL
+    FROM pscomppars
+    WHERE pl_name IS NOT NULL AND default_flag = 1
     ORDER BY pl_name
     """
     data = {"query": query, "format": "csv"}
@@ -63,7 +85,7 @@ def load_all_planets():
 
     try:
         logger.info("Loading all planet data from NASA Exoplanet Archive...")
-        response = requests.post(base_url, data=data, headers=headers, timeout=60)
+        response = requests.post(base_url, data=data, headers=headers, timeout=120)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.text))
         
@@ -160,22 +182,23 @@ def estimate_orbital_distance(df):
     
     return distances
 
+@retry_on_failure(max_retries=2, delay=1)
 def fetch_planet_details(planet_name):
     """Fetch detailed data for a specific planet"""
     base_url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
     safe_name = planet_name.replace("'", "''")  # SQL escape
     query = f"""
-    SELECT pl_name, pl_rade, pl_bmasse, pl_orbper, pl_eqt, st_teff, st_age, 
+    SELECT DISTINCT pl_name, pl_rade, pl_bmasse, pl_orbper, pl_eqt, st_teff, st_age, 
            st_mass, st_dens, disc_year, pl_nespec, discoverymethod, 
            disc_locale, disc_facility, st_rad
-    FROM pscomppars 
-    WHERE pl_name = '{safe_name}'
+    FROM pscomppars
+    WHERE pl_name = '{safe_name}' AND default_flag = 1
     """
     data = {"query": query, "format": "csv"}
     headers = {"User-Agent": "Mozilla/5.0 (compatible; ExoplanetExplorer/1.0)"}
 
     try:
-        response = requests.post(base_url, data=data, headers=headers, timeout=30)
+        response = requests.post(base_url, data=data, headers=headers, timeout=60)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.text))
         

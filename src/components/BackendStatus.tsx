@@ -29,16 +29,16 @@ export const BackendStatus: React.FC<BackendStatusProps> = ({ onStatusChange }) 
   useEffect(() => {
     checkBackendHealth();
     
-    // Retry every 3 seconds if backend is unavailable
+    // Retry every 5 seconds if backend is unavailable, but less frequently after many attempts
     const interval = setInterval(() => {
       if (status === 'unavailable') {
         setRetryCount(prev => prev + 1);
         checkBackendHealth();
       }
-    }, 3000);
+    }, retryCount > 10 ? 15000 : 5000); // Slow down after 10 attempts
 
     return () => clearInterval(interval);
-  }, [status]);
+  }, [status, retryCount]);
 
   if (status === 'available') {
     return (
