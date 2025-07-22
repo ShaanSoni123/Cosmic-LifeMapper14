@@ -148,7 +148,17 @@ function App() {
                   <Telescope className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-white">Cosmic LifeMapper</h1>
+                  <h1 className="text-3xl font-bold text-white flex items-center">
+                    C
+                    <div className="relative inline-block mx-1">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 via-green-400 to-blue-600 animate-spin shadow-lg border border-blue-300/30">
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-500/40 via-transparent to-blue-500/40"></div>
+                        <div className="absolute top-1 left-1 w-1 h-1 bg-green-300 rounded-full opacity-80"></div>
+                        <div className="absolute bottom-1 right-1 w-1.5 h-1 bg-green-400 rounded-full opacity-60"></div>
+                      </div>
+                    </div>
+                    smic LifeMapper
+                  </h1>
                   <p className="text-gray-300">
                     {viewMode === 'nasa' 
                       ? `Explore ${nasaStats.total_planets.toLocaleString()}+ exoplanets from NASA Archive`
