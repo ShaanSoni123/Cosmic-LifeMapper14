@@ -93,7 +93,7 @@ export const StarField: React.FC = () => {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 z-0 bg-gradient-to-b from-slate-900 via-blue-950 to-black"
+      className="fixed inset-0 z-0 bg-gradient-to-b from-gray-950 via-slate-950 to-black"
     />
   );
 };
