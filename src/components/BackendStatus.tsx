@@ -40,44 +40,6 @@ export const BackendStatus: React.FC<BackendStatusProps> = ({ onStatusChange }) 
     return () => clearInterval(interval);
   }, [status]);
 
-  if (status === 'available') {
-    return (
-      <div className="flex items-center gap-2 text-green-400 text-sm">
-        <CheckCircle className="w-4 h-4" />
-        <span>NASA Archive Connected</span>
-      </div>
-    );
-  }
-
-  if (status === 'unavailable') {
-    return (
-      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-yellow-400" />
-          <div className="flex-1">
-            <h3 className="text-yellow-300 font-medium">Backend Starting Up</h3>
-            <p className="text-yellow-200/80 text-sm mt-1">
-              Connecting to NASA Exoplanet Archive... This may take a moment.
-            </p>
-            <p className="text-yellow-200/60 text-xs mt-1">
-              Retry attempt: {retryCount}
-            </p>
-          </div>
-          <button
-            onClick={checkBackendHealth}
-            className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2 text-blue-400 text-sm">
-      <Loader2 className="w-4 h-4 animate-spin" />
-      <span>Checking NASA Archive connection...</span>
-    </div>
-  );
+  // Component is now hidden but still runs the backend status checking
+  return null;
 };
