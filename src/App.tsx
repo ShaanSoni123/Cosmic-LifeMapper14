@@ -224,13 +224,100 @@ function App() {
                 </div>
               </div>
             </div>
-            
-            {/* Backend Status - moved below header */}
-            <div className="mt-4">
-              <BackendStatus onStatusChange={setBackendAvailable} />
-            </div>
           </div>
         </header>
+
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Backend Status Check (hidden) */}
+          <div className="hidden">
+            <BackendStatus onStatusChange={setBackendAvailable} />
+          </div>
+
+          {viewMode === 'nasa' ? (
+            <>
+              {/* NASA Archive View */}
+              <div className="mb-8 text-center">
+                <h2 className="text-2xl font-bold text-white mb-4">NASA Exoplanet Archive</h2>
+              </div>
+              
+              <SimplePlanetList onPlanetSelect={(planetName) => {
+                handleNasaPlanetSelect(planetName);
+              }} />
+            </>
+          ) : (
+            <>
+              {/* Local Curated View */}
+              <SearchFilter
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                filterBy={filterBy}
+                onFilterChange={setFilterBy}
+              />
+
+              <div className="mb-6">
+                <p className="text-gray-300">
+                  Showing {filteredAndSortedPlanets.length} of {processedPlanets.length} curated exoplanets
+                </p>
+              </div>
+
+              {filteredAndSortedPlanets.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {filteredAndSortedPlanets.map((planet) => (
+                    <PlanetCard
+                      key={planet.id}
+                      planet={planet}
+                      onClick={() => setSelectedPlanet(planet)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center">
+                  <Globe className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-300 mb-2">No planets found</h3>
+                  <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Quick Stats Cards for Mobile */}
+          {viewMode === 'local' && (
+            <div className="md:hidden mt-8 grid grid-cols-2 gap-4">
+              <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Globe className="w-4 h-4 text-cyan-400" />
+                  <span className="text-sm text-gray-400">Total</span>
+                </div>
+                <div className="text-xl font-bold text-white">{stats.totalPlanets}</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="w-4 h-4 text-green-400" />
+                  <span className="text-sm text-gray-400">High Habitability</span>
+                </div>
+                <div className="text-xl font-bold text-white">{stats.highHabitability}</div>
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* Planet Modal */}
+        {selectedPlanet && (
+          <PlanetModal
+            planet={selectedPlanet}
+            isOpen={!!selectedPlanet}
+            onClose={() => setSelectedPlanet(null)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;
               {/* NASA Archive View */}
               <div className="mb-8 text-center">
                 <h2 className="text-2xl font-bold text-white mb-4">NASA Exoplanet Archive</h2>
