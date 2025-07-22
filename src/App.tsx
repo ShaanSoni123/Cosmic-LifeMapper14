@@ -4,7 +4,7 @@ import { PlanetCard } from './components/PlanetCard';
 import { PlanetModal } from './components/PlanetModal';
 import { SearchFilter } from './components/SearchFilter';
 import { PlanetSearch } from './components/PlanetSearch';
-import { DirectNASAPlanetGrid } from './components/DirectNASAPlanetGrid';
+import { EnhancedNASAPlanetGrid } from './components/EnhancedNASAPlanetGrid';
 import { SimplePlanetList } from './components/SimplePlanetList';
 import { BackendStatus } from './components/BackendStatus';
 import { nasaExoplanets, TOTAL_NASA_PLANETS } from './data/nasaExoplanets';
@@ -242,7 +242,7 @@ function App() {
                 <p className="text-gray-500 text-sm">Direct NASA API connection with latest discoveries and fuzzy search</p>
               </div>
               
-              <DirectNASAPlanetGrid 
+              <EnhancedNASAPlanetGrid 
                 onPlanetSelect={(planetName) => {
                   handleNasaPlanetSelect(planetName);
                 }} 

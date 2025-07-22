@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, ChevronLeft, ChevronRight, Database, Globe, Zap, Search, Filter, Calendar, Telescope, Star, Thermometer, Weight, Ruler, Clock, Target, Activity, Droplets, Shield, Info } from 'lucide-react';
-import { nasaExoplanetService, NASAExoplanetData } from '../services/nasaApi';
+import { directNasaService, DirectNASAExoplanet } from '../services/directNasaApi';
 
 interface EnhancedNASAPlanetGridProps {
   onPlanetSelect: (planetName: string) => void;
 }
 
 export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ onPlanetSelect }) => {
-  const [planets, setPlanets] = useState<NASAExoplanetData[]>([]);
+  const [planets, setPlanets] = useState<DirectNASAExoplanet[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -22,7 +22,7 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
   const planetsPerPage = 50;
 
   // Enhanced planet card component
-  const EnhancedPlanetCard: React.FC<{ planet: NASAExoplanetData; onClick: () => void }> = ({ planet, onClick }) => {
+  const EnhancedPlanetCard: React.FC<{ planet: DirectNASAExoplanet; onClick: () => void }> = ({ planet, onClick }) => {
     const getTemperatureColor = (temp?: number) => {
       if (!temp) return 'from-gray-500 to-gray-300';
       if (temp < 200) return 'from-blue-500 to-cyan-300';
@@ -31,7 +31,7 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
       return 'from-red-500 to-pink-300';
     };
 
-    const calculateHabitabilityScore = (planet: NASAExoplanetData): number => {
+    const calculateHabitabilityScore = (planet: DirectNASAExoplanet): number => {
       let score = 0;
       
       // Temperature factor
@@ -71,7 +71,7 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
       return 'text-red-400';
     };
 
-    const habitabilityScore = calculateHabitabilityScore(planet);
+    const habitabilityScore = planet.habitability_score || 0;
     const isInHabitableZone = planet.pl_eqt && planet.pl_eqt >= 200 && planet.pl_eqt <= 350;
 
     return (
@@ -124,10 +124,10 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
               </div>
             )}
             
-            {planet.st_spectype && (
+            {planet.discoverymethod && (
               <div className="flex items-center gap-2 text-gray-300">
                 <Star className="w-4 h-4 text-yellow-400" />
-                <span>{planet.st_spectype}</span>
+                <span>{planet.discoverymethod}</span>
               </div>
             )}
           </div>
@@ -158,11 +158,11 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
               </div>
             )}
             
-            {planet.discoverymethod && (
+            {planet.disc_facility && (
               <div className="flex items-center gap-1">
                 <Telescope className="w-3 h-3 text-pink-400" />
                 <span className="text-gray-400 truncate text-xs">
-                  {planet.discoverymethod.split(' ')[0]}
+                  {planet.disc_facility.split(' ')[0]}
                 </span>
               </div>
             )}
@@ -195,11 +195,11 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
                 </div>
               )}
               
-              {planet.pl_dens && (
+              {planet.st_mass && (
                 <div className="flex items-center gap-1">
-                  <Shield className="w-3 h-3 text-amber-400" />
-                  <span className="text-gray-400">ρ:</span>
-                  <span className="text-white">{planet.pl_dens.toFixed(1)} g/cm³</span>
+                  <Star className="w-3 h-3 text-yellow-400" />
+                  <span className="text-gray-400">M*:</span>
+                  <span className="text-white">{planet.st_mass.toFixed(1)}☉</span>
                 </div>
               )}
             </div>
@@ -234,24 +234,12 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
                 <span className="text-xs text-green-400 font-medium">HZ</span>
               </div>
             )}
-            
-            {planet.tran_flag === 1 && (
-              <div className="flex items-center gap-1 px-2 py-1 bg-blue-500/20 rounded-full border border-blue-500/30">
-                <span className="text-xs text-blue-400 font-medium">Transit</span>
-              </div>
-            )}
-            
-            {planet.rv_flag === 1 && (
-              <div className="flex items-center gap-1 px-2 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
-                <span className="text-xs text-purple-400 font-medium">RV</span>
-              </div>
-            )}
           </div>
 
           {/* Discovery Info */}
           <div className="mt-2">
             <div className="text-xs text-gray-500 truncate">
-              {planet.disc_facility && `Discovered by ${planet.disc_facility}`}
+              {planet.disc_locale && `${planet.disc_locale}`}
             </div>
           </div>
         </div>
@@ -264,7 +252,7 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
     setError(null);
     
     try {
-      const response = await nasaExoplanetService.getAllPlanets(page, planetsPerPage);
+      const response = await directNasaService.getAllPlanets(page, planetsPerPage);
       setPlanets(response.planets);
       setTotalPages(response.total_pages);
       setTotalPlanets(response.total);
@@ -279,7 +267,13 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
 
   const loadStatistics = async () => {
     try {
-      const stats = await nasaExoplanetService.getStatistics();
+      // For now, calculate stats from loaded planets
+      const stats = {
+        total_planets: planets.length,
+        total_systems: new Set(planets.map(p => p.pl_name?.split(' ')[0]).filter(Boolean)).size,
+        discovery_methods: {},
+        yearly_discoveries: {}
+      };
       setStatistics(stats);
     } catch (err) {
       console.error('Error loading statistics:', err);
@@ -291,7 +285,7 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
     if (term.length >= 2) {
       setLoading(true);
       try {
-        const results = await nasaExoplanetService.searchPlanets(term, planetsPerPage);
+        const results = await directNasaService.searchPlanets(term, planetsPerPage);
         setPlanets(results);
         setTotalPlanets(results.length);
         setTotalPages(1);
@@ -310,7 +304,7 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
     setLoading(true);
     setShowLatest(true);
     try {
-      const latest = await nasaExoplanetService.getLatestDiscoveries(100);
+      const latest = await directNasaService.getLatestDiscoveries(100);
       setPlanets(latest);
       setTotalPlanets(latest.length);
       setTotalPages(1);
@@ -324,7 +318,6 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
 
   useEffect(() => {
     loadPlanets(1);
-    loadStatistics();
   }, []);
 
   const handlePageChange = (page: number) => {
