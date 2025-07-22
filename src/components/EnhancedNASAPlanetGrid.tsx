@@ -189,24 +189,27 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
       const isHealthy = await apiService.checkHealth();
       if (!isHealthy) {
         setBackendAvailable(false);
-        setError('Backend service is starting up. Please wait a moment and try again.');
+        setError('Backend service is starting up and loading NASA data. This may take 1-2 minutes...');
         setLoading(false);
         return;
       }
       
       setBackendAvailable(true);
-      const response = await apiService.getAllPlanets(page, planetsPerPage);
+      console.log('Backend is healthy, fetching planets...');
+      const response = await apiService.getAllPlanets(page, 100); // Increase page size
       if (response) {
         console.log(`Loaded ${response.planets.length} planets for page ${page}`);
+        console.log(`Total planets available: ${response.total}`);
         setPlanets(response.planets);
         setTotalPages(response.total_pages);
         setTotalPlanets(response.total);
         setCurrentPage(page);
+        setError(null); // Clear any previous errors
       } else {
-        setError('Failed to load planets from NASA Archive');
+        setError('Failed to load planets from NASA Archive. The backend may still be loading data...');
       }
     } catch (err) {
-      setError('Error connecting to NASA Exoplanet Archive');
+      setError('Error connecting to NASA Exoplanet Archive. Please wait while the backend loads all 5900+ planets...');
       console.error('Error loading planets:', err);
     } finally {
       setLoading(false);
@@ -256,8 +259,9 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-gray-300">Loading NASA Exoplanet Archive...</p>
-          <p className="text-gray-500 text-sm mt-2">Fetching 5900+ confirmed exoplanets...</p>
+          <p className="text-gray-300">🚀 Loading NASA Exoplanet Archive...</p>
+          <p className="text-gray-500 text-sm mt-2">📡 Fetching all 5900+ confirmed exoplanets from NASA...</p>
+          <p className="text-gray-400 text-xs mt-2">This may take 1-2 minutes on first load</p>
         </div>
       </div>
     );
@@ -269,12 +273,12 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
         <div className="text-center">
           <Database className={`w-12 h-12 mx-auto mb-4 ${backendAvailable ? 'text-red-400' : 'text-yellow-400'}`} />
           <p className={`mb-2 ${backendAvailable ? 'text-red-300' : 'text-yellow-300'}`}>
-            {backendAvailable ? 'Error loading planets' : 'Backend Starting Up'}
+            {backendAvailable ? '⚠️ Error loading planets' : '🔄 Backend Loading NASA Data'}
           </p>
           <p className="text-gray-500 text-sm mb-4">{error}</p>
           {!backendAvailable && (
             <p className="text-gray-400 text-xs mb-4">
-              The Flask backend is initializing and connecting to NASA's servers...
+              🌟 The Flask backend is downloading all 5900+ exoplanets from NASA's servers...
             </p>
           )}
           <button
@@ -285,7 +289,7 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
                 : 'bg-yellow-600 hover:bg-yellow-700'
             }`}
           >
-            {backendAvailable ? 'Try Again' : 'Check Again'}
+            {backendAvailable ? '🔄 Try Again' : '⏳ Check Progress'}
           </button>
         </div>
       </div>
@@ -313,7 +317,9 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
-            <div className="text-2xl font-bold text-cyan-400">{totalPlanets.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-cyan-400">
+              {totalPlanets > 0 ? totalPlanets.toLocaleString() : '...'}
+            </div>
             <div className="text-gray-400 text-sm">Total Planets</div>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
@@ -341,11 +347,11 @@ export const EnhancedNASAPlanetGrid: React.FC<EnhancedNASAPlanetGridProps> = ({ 
       <div className="mb-6 text-center">
         <p className="text-gray-300">
           {searchTerm ? `Search Results for "${searchTerm}"` : 'All NASA Exoplanets'} - 
-          Showing {planets.length} {searchTerm ? 'results' : `of ${totalPlanets.toLocaleString()} planets`}
+          Showing {planets.length} {searchTerm ? 'results' : `of ${totalPlanets > 0 ? totalPlanets.toLocaleString() : '...'} planets`}
         </p>
         <p className="text-gray-500 text-sm">
-          {!searchTerm && `Page ${currentPage} of ${totalPages.toLocaleString()} • `}
-          Live NASA Exoplanet Archive Data
+          {!searchTerm && totalPages > 0 && `Page ${currentPage} of ${totalPages.toLocaleString()} • `}
+          🛰️ Live NASA Exoplanet Archive Data
         </p>
       </div>
 

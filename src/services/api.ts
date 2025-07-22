@@ -3,13 +3,18 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   : 'http://localhost:5000/api';
 
 // Add timeout to fetch requests
-const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 30000) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   
   try {
     const response = await fetch(url, {
       ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...options.headers,
+      },
       signal: controller.signal
     });
     clearTimeout(timeoutId);
@@ -65,10 +70,7 @@ class ApiService {
     try {
       const response = await fetchWithTimeout(`${API_BASE_URL}/planets/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }, 15000);
+      }, 20000);
       if (!response.ok) throw new Error('Search failed');
       const data = await response.json();
       return data.results;
@@ -82,10 +84,7 @@ class ApiService {
     try {
       const response = await fetchWithTimeout(`${API_BASE_URL}/planets/${encodeURIComponent(planetName)}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }, 15000);
+      }, 20000);
       if (!response.ok) throw new Error('Planet not found');
       return await response.json();
     } catch (error) {
@@ -99,10 +98,7 @@ class ApiService {
       console.log(`Fetching planets from backend: page ${page}, per_page ${perPage}`);
       const response = await fetchWithTimeout(`${API_BASE_URL}/planets/all?page=${page}&per_page=${perPage}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }, 30000); // Longer timeout for large datasets
+      }, 60000); // Even longer timeout for NASA data
       if (!response.ok) throw new Error('Failed to fetch planets');
       const data = await response.json();
       console.log(`Backend returned ${data.planets?.length || 0} planets, total: ${data.total || 0}`);
@@ -117,10 +113,7 @@ class ApiService {
     try {
       const response = await fetchWithTimeout(`${API_BASE_URL}/planets/stats`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }, 10000);
+      }, 15000);
       if (!response.ok) throw new Error('Failed to fetch stats');
       return await response.json();
     } catch (error) {
@@ -134,7 +127,7 @@ class ApiService {
       console.log('Checking backend health...');
       const response = await fetchWithTimeout(`${API_BASE_URL}/health`, {
         method: 'GET',
-      }, 5000);
+      }, 10000);
       const isHealthy = response.ok;
       console.log(`Backend health check: ${isHealthy ? 'healthy' : 'unhealthy'}`);
       return isHealthy;
