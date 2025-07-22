@@ -6,6 +6,7 @@ import { SearchFilter } from './components/SearchFilter';
 import { PlanetSearch } from './components/PlanetSearch';
 import { SimplePlanetList } from './components/SimplePlanetList';
 import { BackendStatus } from './components/BackendStatus';
+import { nasaExoplanets, TOTAL_NASA_PLANETS } from './data/nasaExoplanets';
 import { exoplanets } from './data/exoplanets';
 import { clusterPlanets, ExtendedExoplanet } from './utils/exoplanetAnalysis';
 import { apiService } from './services/api';
@@ -28,42 +29,37 @@ function App() {
   // Load NASA stats
   React.useEffect(() => {
     const loadStats = async () => {
-      try {
-        const stats = await apiService.getPlanetStats();
-        if (stats) {
-          setNasaStats(stats);
-        }
-      } catch (error) {
-        console.warn('Stats service unavailable:', error);
-      }
+      // Use our local NASA dataset stats
+      setNasaStats({ total_planets: TOTAL_NASA_PLANETS });
     };
     loadStats();
   }, []);
 
   const handleNasaPlanetSelect = async (planetName: string) => {
-    const planetDetails = await apiService.getPlanetDetails(planetName);
+    // Find planet in our NASA dataset
+    const planetDetails = nasaExoplanets.find(p => p.name === planetName);
     if (planetDetails) {
       // Convert to ExtendedExoplanet format for modal
       const extendedPlanet: ExtendedExoplanet = {
-        id: planetDetails.pl_name.toLowerCase().replace(/\s+/g, '-'),
-        name: planetDetails.pl_name,
-        distanceFromEarth: 100, // Default
-        orbitalPeriod: planetDetails.pl_orbper || 365,
-        temperature: planetDetails.pl_eqt || planetDetails.st_teff || 288,
-        starType: getStarType(planetDetails.st_teff || 5778),
+        id: planetDetails.id,
+        name: planetDetails.name,
+        distanceFromEarth: planetDetails.distanceFromEarth,
+        orbitalPeriod: planetDetails.orbitalPeriod,
+        temperature: planetDetails.temperature,
+        starType: planetDetails.starType,
         biosignatures: [],
-        radius: planetDetails.pl_rade || 1.0,
-        mass: planetDetails.pl_bmasse || 1.0,
-        discoveryYear: planetDetails.disc_year || 2000,
-        constellation: 'Unknown',
-        habitabilityScore: planetDetails.habitability_score,
-        surfaceTemperature: planetDetails.pl_eqt || planetDetails.st_teff || 288,
-        surfaceGravity: (planetDetails.pl_bmasse || 1.0) / Math.pow(planetDetails.pl_rade || 1.0, 2),
-        waterRetentionPotential: Math.min(1, planetDetails.habitability_score / 100),
-        radiationHazardIndex: Math.max(0, 1 - planetDetails.habitability_score / 100),
-        cluster: getCluster(planetDetails.habitability_score),
-        clusterLabel: getClusterLabel(planetDetails.habitability_score),
-        inHabitableZone: planetDetails.in_habitable_zone
+        radius: planetDetails.radius,
+        mass: planetDetails.mass,
+        discoveryYear: planetDetails.discoveryYear,
+        constellation: planetDetails.constellation,
+        habitabilityScore: planetDetails.habitabilityScore,
+        surfaceTemperature: planetDetails.temperature,
+        surfaceGravity: planetDetails.mass / Math.pow(planetDetails.radius, 2),
+        waterRetentionPotential: Math.min(1, planetDetails.habitabilityScore / 100),
+        radiationHazardIndex: Math.max(0, 1 - planetDetails.habitabilityScore / 100),
+        cluster: getCluster(planetDetails.habitabilityScore),
+        clusterLabel: getClusterLabel(planetDetails.habitabilityScore),
+        inHabitableZone: planetDetails.inHabitableZone
       };
       setSelectedPlanet(extendedPlanet);
     }
@@ -267,7 +263,7 @@ function App() {
                 <div className="text-center">
                   <Globe className="w-16 h-16 text-gray-500 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-300 mb-2">No planets found</h3>
-                  <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+                      nasaStats.total_planets.toLocaleString() : 
                 </div>
               )}
             </>

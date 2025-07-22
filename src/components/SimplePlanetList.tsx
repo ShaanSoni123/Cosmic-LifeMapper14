@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Globe, Thermometer, Clock, Star, Calendar, Ruler, Weight } from 'lucide-react';
-import { apiService, PlanetDetails } from '../services/api';
+import { nasaExoplanets, NASAExoplanet, TOTAL_NASA_PLANETS } from '../data/nasaExoplanets';
 
 interface SimplePlanetListProps {
   onPlanetSelect?: (planetName: string) => void;
 }
 
 export const SimplePlanetList: React.FC<SimplePlanetListProps> = ({ onPlanetSelect }) => {
-  const [planets, setPlanets] = useState<PlanetDetails[]>([]);
+  const [planets, setPlanets] = useState<NASAExoplanet[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -16,21 +16,23 @@ export const SimplePlanetList: React.FC<SimplePlanetListProps> = ({ onPlanetSele
   const [error, setError] = useState<string | null>(null);
   const planetsPerPage = 50;
 
-  // Load planets from NASA API
+  // Load planets from local NASA dataset
   const loadPlanets = async (page: number) => {
     setLoading(true);
     setError(null);
     
     try {
-      const response = await apiService.getAllPlanets(page, planetsPerPage);
-      if (response) {
-        setPlanets(response.planets);
-        setTotalPages(response.total_pages);
-        setTotalPlanets(response.total);
-        setCurrentPage(page);
-      } else {
-        setError('Failed to load planets from NASA Archive');
-      }
+      // Simulate loading delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const startIndex = (page - 1) * planetsPerPage;
+      const endIndex = startIndex + planetsPerPage;
+      const paginatedPlanets = nasaExoplanets.slice(startIndex, endIndex);
+      
+      setPlanets(paginatedPlanets);
+      setTotalPages(Math.ceil(TOTAL_NASA_PLANETS / planetsPerPage));
+      setTotalPlanets(TOTAL_NASA_PLANETS);
+      setCurrentPage(page);
     } catch (err) {
       setError('Error connecting to NASA Exoplanet Archive');
       console.error('Error loading planets:', err);
@@ -45,7 +47,9 @@ export const SimplePlanetList: React.FC<SimplePlanetListProps> = ({ onPlanetSele
 
   // Filter planets based on search
   const filteredPlanets = planets.filter(planet =>
-    planet.pl_name.toLowerCase().includes(searchTerm.toLowerCase())
+    planet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    planet.constellation.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    planet.discoveryFacility.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handlePageChange = (page: number) => {
@@ -73,34 +77,13 @@ export const SimplePlanetList: React.FC<SimplePlanetListProps> = ({ onPlanetSele
     return 'text-red-400';
   };
 
-  const getStarType = (temp?: number): string => {
-    if (!temp) return 'Unknown';
-    if (temp > 7500) return 'A-type';
-    if (temp > 6000) return 'F-type';
-    if (temp > 5200) return 'G-type';
-    if (temp > 3700) return 'K-type';
-    return 'M-type';
-  };
-
-  const estimateDistance = (planet: PlanetDetails): number => {
-    // This is a rough estimation based on discovery method and year
-    // In reality, distance data would need to be fetched from additional sources
-    if (planet.discoverymethod?.includes('Transit')) {
-      return Math.random() * 2000 + 100; // Transit planets tend to be farther
-    } else if (planet.discoverymethod?.includes('Radial Velocity')) {
-      return Math.random() * 200 + 10; // RV planets tend to be closer
-    } else {
-      return Math.random() * 1000 + 50; // Default range
-    }
-  };
-
   if (loading && planets.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-300">Loading NASA Exoplanet Archive...</p>
-          <p className="text-gray-500 text-sm mt-2">Fetching real planetary data...</p>
+          <p className="text-gray-300">Loading NASA Exoplanet Database...</p>
+          <p className="text-gray-500 text-sm mt-2">Accessing comprehensive planetary data...</p>
         </div>
       </div>
     );
@@ -111,7 +94,7 @@ export const SimplePlanetList: React.FC<SimplePlanetListProps> = ({ onPlanetSele
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <Globe className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p className="text-red-300 mb-2">Error loading NASA data</p>
+          <p className="text-red-300 mb-2">Error loading exoplanet data</p>
           <p className="text-gray-500 text-sm mb-4">{error}</p>
           <button
             onClick={() => loadPlanets(currentPage)}
@@ -143,30 +126,27 @@ export const SimplePlanetList: React.FC<SimplePlanetListProps> = ({ onPlanetSele
           Showing {filteredPlanets.length} of {totalPlanets.toLocaleString()} NASA exoplanets
         </p>
         <p className="text-gray-500 text-sm">
-          Page {currentPage} of {totalPages.toLocaleString()} • Real-time data from NASA Exoplanet Archive
+          Page {currentPage} of {totalPages.toLocaleString()} • Comprehensive NASA Exoplanet Database
         </p>
       </div>
 
       {/* Enhanced Planet Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         {filteredPlanets.map((planet, index) => {
-          const estimatedDistance = estimateDistance(planet);
-          const starType = getStarType(planet.st_teff);
-          
           return (
             <div
-              key={`${planet.pl_name}-${index}`}
-              onClick={() => onPlanetSelect?.(planet.pl_name)}
+              key={`${planet.name}-${index}`}
+              onClick={() => onPlanetSelect?.(planet.name)}
               className="group cursor-pointer transform transition-all duration-500 hover:scale-105"
             >
               {/* Planet visualization */}
               <div className="relative w-20 h-20 mx-auto mb-4">
                 <div
                   className={`absolute inset-0 rounded-full bg-gradient-to-br ${getTemperatureColor(
-                    planet.pl_eqt || planet.st_teff
+                    planet.temperature
                   )} shadow-xl animate-pulse group-hover:animate-none transition-all duration-500`}
                   style={{
-                    boxShadow: `0 0 20px rgba(${(planet.pl_eqt || planet.st_teff || 0) < 280 ? '34, 197, 94' : '239, 68, 68'}, 0.3)`,
+                    boxShadow: `0 0 20px rgba(${planet.temperature < 280 ? '34, 197, 94' : '239, 68, 68'}, 0.3)`,
                   }}
                 />
                 <div className="absolute inset-1 rounded-full bg-gradient-to-br from-transparent to-black/20" />
@@ -178,95 +158,83 @@ export const SimplePlanetList: React.FC<SimplePlanetListProps> = ({ onPlanetSele
               {/* Enhanced Planet info card */}
               <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 shadow-xl">
                 <h3 className="text-lg font-bold text-white mb-3 group-hover:text-cyan-300 transition-colors truncate">
-                  {planet.pl_name}
+                  {planet.name}
                 </h3>
                 
                 {/* Primary Stats */}
                 <div className="space-y-2 text-sm mb-4">
                   <div className="flex items-center gap-2 text-gray-300">
                     <Globe className="w-4 h-4 text-blue-400" />
-                    <span>{estimatedDistance.toFixed(0)} ly away</span>
+                    <span>{planet.distanceFromEarth.toFixed(0)} ly away</span>
                   </div>
                   
-                  {planet.pl_orbper && (
-                    <div className="flex items-center gap-2 text-gray-300">
-                      <Clock className="w-4 h-4 text-green-400" />
-                      <span>{planet.pl_orbper.toFixed(0)} days</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <Clock className="w-4 h-4 text-green-400" />
+                    <span>{planet.orbitalPeriod.toFixed(0)} days</span>
+                  </div>
                   
-                  {(planet.pl_eqt || planet.st_teff) && (
-                    <div className="flex items-center gap-2 text-gray-300">
-                      <Thermometer className="w-4 h-4 text-red-400" />
-                      <span>{(planet.pl_eqt || planet.st_teff)?.toFixed(0)}K</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <Thermometer className="w-4 h-4 text-red-400" />
+                    <span>{planet.temperature.toFixed(0)}K</span>
+                  </div>
                   
                   <div className="flex items-center gap-2 text-gray-300">
                     <Star className="w-4 h-4 text-yellow-400" />
-                    <span>{starType}</span>
+                    <span>{planet.starType}</span>
                   </div>
                 </div>
 
                 {/* Physical Properties */}
                 <div className="grid grid-cols-2 gap-2 text-xs mb-4">
-                  {planet.pl_rade && (
-                    <div className="flex items-center gap-1">
-                      <Ruler className="w-3 h-3 text-purple-400" />
-                      <span className="text-gray-400">R:</span>
-                      <span className="text-white">{planet.pl_rade.toFixed(1)}⊕</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <Ruler className="w-3 h-3 text-purple-400" />
+                    <span className="text-gray-400">R:</span>
+                    <span className="text-white">{planet.radius.toFixed(1)}⊕</span>
+                  </div>
                   
-                  {planet.pl_bmasse && (
-                    <div className="flex items-center gap-1">
-                      <Weight className="w-3 h-3 text-orange-400" />
-                      <span className="text-gray-400">M:</span>
-                      <span className="text-white">{planet.pl_bmasse.toFixed(1)}⊕</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <Weight className="w-3 h-3 text-orange-400" />
+                    <span className="text-gray-400">M:</span>
+                    <span className="text-white">{planet.mass.toFixed(1)}⊕</span>
+                  </div>
                   
-                  {planet.disc_year && (
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-cyan-400" />
-                      <span className="text-gray-400">Disc:</span>
-                      <span className="text-white">{planet.disc_year}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-cyan-400" />
+                    <span className="text-gray-400">Disc:</span>
+                    <span className="text-white">{planet.discoveryYear}</span>
+                  </div>
                   
-                  {planet.discoverymethod && (
-                    <div className="flex items-center gap-1">
-                      <span className="w-3 h-3 text-center text-pink-400">🔬</span>
-                      <span className="text-gray-400 truncate text-xs">
-                        {planet.discoverymethod.split(' ')[0]}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <span className="w-3 h-3 text-center text-pink-400">🔬</span>
+                    <span className="text-gray-400 truncate text-xs">
+                      {planet.discoveryMethod.split(' ')[0]}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Habitability Score */}
                 <div className="pt-3 border-t border-white/20">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-gray-400">Habitability</span>
-                    <span className={`text-sm font-bold ${getHabitabilityColor(planet.habitability_score)}`}>
-                      {planet.habitability_score}/100
+                    <span className={`text-sm font-bold ${getHabitabilityColor(planet.habitabilityScore)}`}>
+                      {planet.habitabilityScore}/100
                     </span>
                   </div>
                   
                   <div className="w-full bg-gray-700 rounded-full h-1.5">
                     <div
                       className={`h-1.5 rounded-full ${
-                        planet.habitability_score >= 70 ? 'bg-green-400' :
-                        planet.habitability_score >= 50 ? 'bg-yellow-400' :
-                        planet.habitability_score >= 25 ? 'bg-orange-400' : 'bg-red-400'
+                        planet.habitabilityScore >= 70 ? 'bg-green-400' :
+                        planet.habitabilityScore >= 50 ? 'bg-yellow-400' :
+                        planet.habitabilityScore >= 25 ? 'bg-orange-400' : 'bg-red-400'
                       }`}
-                      style={{ width: `${planet.habitability_score}%` }}
+                      style={{ width: `${planet.habitabilityScore}%` }}
                     />
                   </div>
                 </div>
 
                 {/* Special Indicators */}
-                {planet.in_habitable_zone && (
+                {planet.inHabitableZone && (
                   <div className="mt-3 pt-3 border-t border-white/20">
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
@@ -276,13 +244,11 @@ export const SimplePlanetList: React.FC<SimplePlanetListProps> = ({ onPlanetSele
                 )}
 
                 {/* Discovery Info */}
-                {planet.disc_facility && (
-                  <div className="mt-2">
-                    <div className="text-xs text-gray-500 truncate">
-                      Discovered by {planet.disc_facility}
-                    </div>
+                <div className="mt-2">
+                  <div className="text-xs text-gray-500 truncate">
+                    Discovered by {planet.discoveryFacility}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           );
@@ -401,7 +367,7 @@ export const SimplePlanetList: React.FC<SimplePlanetListProps> = ({ onPlanetSele
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-900/20 border border-blue-500/30 rounded-lg">
           <Globe className="w-4 h-4 text-blue-400" />
           <span className="text-blue-300 text-sm">
-            Real-time data from NASA Exoplanet Archive
+            Comprehensive NASA Exoplanet Database - {TOTAL_NASA_PLANETS} Confirmed Planets
           </span>
         </div>
       </div>
