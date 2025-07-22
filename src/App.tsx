@@ -4,7 +4,7 @@ import { PlanetCard } from './components/PlanetCard';
 import { PlanetModal } from './components/PlanetModal';
 import { SearchFilter } from './components/SearchFilter';
 import { PlanetSearch } from './components/PlanetSearch';
-import { EnhancedNASAPlanetGrid } from './components/EnhancedNASAPlanetGrid';
+import { DirectNASAPlanetGrid } from './components/DirectNASAPlanetGrid';
 import { SimplePlanetList } from './components/SimplePlanetList';
 import { BackendStatus } from './components/BackendStatus';
 import { nasaExoplanets, TOTAL_NASA_PLANETS } from './data/nasaExoplanets';
@@ -238,11 +238,11 @@ function App() {
               {/* NASA Archive View */}
               <div className="mb-8 text-center">
                 <h2 className="text-2xl font-bold text-white mb-4">NASA Exoplanet Archive</h2>
-                <p className="text-gray-300 mb-2">Complete database of {TOTAL_NASA_PLANETS}+ confirmed exoplanets</p>
-                <p className="text-gray-500 text-sm">Comprehensive NASA Exoplanet Database with latest discoveries</p>
+                <p className="text-gray-300 mb-2">Live access to 5900+ confirmed exoplanets</p>
+                <p className="text-gray-500 text-sm">Direct NASA API connection with latest discoveries and fuzzy search</p>
               </div>
               
-              <SimplePlanetList 
+              <DirectNASAPlanetGrid 
                 onPlanetSelect={(planetName) => {
                   handleNasaPlanetSelect(planetName);
                 }} 
