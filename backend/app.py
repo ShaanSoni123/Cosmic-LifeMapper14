@@ -6,6 +6,7 @@ from io import StringIO
 from fuzzywuzzy import process
 import math
 import logging
+import time
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -17,12 +18,24 @@ CORS(app)
 # Cache for planet names to avoid repeated API calls
 planet_names_cache = None
 all_planets_cache = None
+cache_timestamp = None
+CACHE_DURATION = 300  # 5 minutes
+
+def is_cache_valid():
+    global cache_timestamp
+    if cache_timestamp is None:
+        return False
+    return (time.time() - cache_timestamp) < CACHE_DURATION
+
+def update_cache_timestamp():
+    global cache_timestamp
+    cache_timestamp = time.time()
 
 def load_planet_names():
     """Load all planet names from NASA Exoplanet Archive"""
     global planet_names_cache
     
-    if planet_names_cache is not None:
+    if planet_names_cache is not None and is_cache_valid():
         return planet_names_cache
     
     base_url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
@@ -32,10 +45,11 @@ def load_planet_names():
 
     try:
         logger.info("Loading planet names from NASA Exoplanet Archive...")
-        response = requests.post(base_url, data=data, headers=headers, timeout=30)
+        response = requests.post(base_url, data=data, headers=headers, timeout=60)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.text))
         planet_names_cache = df['pl_name'].dropna().unique().tolist()
+        update_cache_timestamp()
         logger.info(f"Loaded {len(planet_names_cache)} planet names")
         return planet_names_cache
     except Exception as e:
@@ -46,7 +60,7 @@ def load_all_planets():
     """Load all planet data from NASA Exoplanet Archive"""
     global all_planets_cache
     
-    if all_planets_cache is not None:
+    if all_planets_cache is not None and is_cache_valid():
         return all_planets_cache
     
     base_url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
@@ -63,7 +77,7 @@ def load_all_planets():
 
     try:
         logger.info("Loading all planet data from NASA Exoplanet Archive...")
-        response = requests.post(base_url, data=data, headers=headers, timeout=60)
+        response = requests.post(base_url, data=data, headers=headers, timeout=120)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.text))
         
@@ -73,6 +87,7 @@ def load_all_planets():
         df['orbital_distance_au'] = estimate_orbital_distance(df)
         
         all_planets_cache = df
+        update_cache_timestamp()
         logger.info(f"Loaded {len(df)} planets with full data")
         return df
     except Exception as e:
@@ -175,7 +190,7 @@ def fetch_planet_details(planet_name):
     headers = {"User-Agent": "Mozilla/5.0 (compatible; ExoplanetExplorer/1.0)"}
 
     try:
-        response = requests.post(base_url, data=data, headers=headers, timeout=30)
+        response = requests.post(base_url, data=data, headers=headers, timeout=60)
         response.raise_for_status()
         df = pd.read_csv(StringIO(response.text))
         
@@ -274,14 +289,19 @@ def get_all_planets():
     """Get paginated list of all planets"""
     try:
         page = max(1, int(request.args.get('page', 1)))
-        per_page = min(int(request.args.get('per_page', 100)), 200)  # Max 200 per page
+        per_page = min(int(request.args.get('per_page', 50)), 100)  # Max 100 per page for better performance
+        
+        logger.info(f"Fetching planets page {page}, per_page {per_page}")
         
         df = load_all_planets()
         if df.empty:
+            logger.error("No planet data available")
             return jsonify({"error": "Failed to load planet data"}), 500
         
         total = len(df)
         total_pages = math.ceil(total / per_page)
+        
+        logger.info(f"Total planets: {total}, total pages: {total_pages}")
         
         # Calculate pagination
         start_idx = (page - 1) * per_page
@@ -289,6 +309,8 @@ def get_all_planets():
         
         # Get page data
         page_df = df.iloc[start_idx:end_idx]
+        
+        logger.info(f"Returning {len(page_df)} planets for page {page}")
         
         # Convert to list of dictionaries
         planets = []
@@ -314,10 +336,11 @@ def get_all_planets():
 def get_planet_stats():
     """Get statistics about the planet database"""
     try:
-        planet_names = load_planet_names()
+        df = load_all_planets()
+        total_planets = len(df) if not df.empty else 0
         
         return jsonify({
-            "total_planets": len(planet_names) if planet_names else 0,
+            "total_planets": total_planets,
             "data_source": "NASA Exoplanet Archive",
             "last_updated": "Real-time"
         })
@@ -329,8 +352,19 @@ def get_planet_stats():
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
+    logger.info("Health check requested")
     return jsonify({"status": "healthy", "service": "Exoplanet Explorer API"})
+
+@app.route('/api/cache/clear', methods=['POST'])
+def clear_cache():
+    """Clear all caches"""
+    global planet_names_cache, all_planets_cache, cache_timestamp
+    planet_names_cache = None
+    all_planets_cache = None
+    cache_timestamp = None
+    logger.info("Cache cleared")
+    return jsonify({"status": "Cache cleared"})
 
 if __name__ == '__main__':
     logger.info("Starting Exoplanet Explorer API...")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000, threaded=True)
