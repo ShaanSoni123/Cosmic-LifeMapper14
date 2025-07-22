@@ -20,7 +20,7 @@ function App() {
   const [filterBy, setFilterBy] = useState('all');
   const [viewMode, setViewMode] = useState<'local' | 'nasa'>('nasa');
   const [nasaStats, setNasaStats] = useState({ total_planets: 0 });
-  const [backendAvailable, setBackendAvailable] = useState(false);
+  const [backendAvailable, setBackendAvailable] = useState(true);
 
   // Process exoplanets with extended analysis
   const processedPlanets = useMemo(() => {
@@ -30,8 +30,18 @@ function App() {
   // Load NASA stats
   React.useEffect(() => {
     const loadStats = async () => {
-      // Use our local NASA dataset stats
-      setNasaStats({ total_planets: TOTAL_NASA_PLANETS });
+      try {
+        const stats = await apiService.getPlanetStats();
+        if (stats) {
+          setNasaStats({ total_planets: stats.total_planets });
+        } else {
+          // Fallback to local dataset stats
+          setNasaStats({ total_planets: TOTAL_NASA_PLANETS });
+        }
+      } catch (error) {
+        console.warn('Failed to load NASA stats, using local data');
+        setNasaStats({ total_planets: TOTAL_NASA_PLANETS });
+      }
     };
     loadStats();
   }, []);

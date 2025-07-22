@@ -9,6 +9,8 @@ import logging
 import time
 import threading
 from urllib.parse import quote
+import sys
+import os
 
 # Setup comprehensive logging
 logging.basicConfig(
@@ -20,6 +22,42 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 # Enable CORS for all routes and origins
 CORS(app, origins="*", methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "Authorization"])
+
+# Test dependencies on startup
+def test_dependencies():
+    """Test if all required dependencies are available"""
+    missing_deps = []
+    
+    try:
+        import pandas as pd
+        logger.info("✅ pandas available")
+    except ImportError:
+        missing_deps.append("pandas")
+    
+    try:
+        import requests
+        logger.info("✅ requests available")
+    except ImportError:
+        missing_deps.append("requests")
+    
+    try:
+        from fuzzywuzzy import process
+        logger.info("✅ fuzzywuzzy available")
+    except ImportError:
+        missing_deps.append("fuzzywuzzy")
+    
+    try:
+        import Levenshtein
+        logger.info("✅ python-Levenshtein available (fast fuzzy search)")
+    except ImportError:
+        logger.warning("⚠️ python-Levenshtein not available (fuzzy search will be slower)")
+    
+    if missing_deps:
+        logger.error(f"❌ Missing dependencies: {', '.join(missing_deps)}")
+        logger.error("Please install missing dependencies with: pip install " + " ".join(missing_deps))
+        return False
+    
+    return True
 
 # Global cache variables
 planet_names_cache = None
@@ -495,6 +533,12 @@ def after_request(response):
 
 if __name__ == '__main__':
     logger.info("🚀 Starting Exoplanet Explorer API...")
+    
+    # Test dependencies first
+    if not test_dependencies():
+        logger.error("❌ Cannot start server due to missing dependencies")
+        sys.exit(1)
+    
     logger.info("🌟 Connecting to NASA Exoplanet Archive...")
     
     # Pre-load data in background
