@@ -110,18 +110,12 @@ class ApiService {
 
   async checkHealth(): Promise<boolean> {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
       const response = await fetch(`${API_BASE_URL}/health`, {
         method: 'GET',
-        signal: controller.signal,
+        timeout: 5000,
       });
-      
-      clearTimeout(timeoutId);
       return response.ok;
     } catch (error) {
-      console.warn('Health check failed:', error);
       return false;
     }
   }

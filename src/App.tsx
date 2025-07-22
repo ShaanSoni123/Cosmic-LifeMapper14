@@ -232,7 +232,8 @@ function App() {
               </div>
               
               <SimplePlanetList onPlanetSelect={(planetName) => {
-                handleNasaPlanetSelect(planetName);
+                // For now just show an alert with the planet name
+                alert(`Selected: ${planetName}`);
               }} />
             </>
           ) : (
