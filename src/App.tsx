@@ -4,13 +4,11 @@ import { PlanetCard } from './components/PlanetCard';
 import { PlanetModal } from './components/PlanetModal';
 import { SearchFilter } from './components/SearchFilter';
 import { PlanetSearch } from './components/PlanetSearch';
-import { EnhancedNASAPlanetGrid } from './components/EnhancedNASAPlanetGrid';
+import { DirectNASAPlanetGrid } from './components/DirectNASAPlanetGrid';
 import { SimplePlanetList } from './components/SimplePlanetList';
-import { BackendStatus } from './components/BackendStatus';
 import { nasaExoplanets, TOTAL_NASA_PLANETS } from './data/nasaExoplanets';
 import { exoplanets } from './data/exoplanets';
 import { clusterPlanets, ExtendedExoplanet } from './utils/exoplanetAnalysis';
-import { apiService } from './services/api';
 import { Telescope, Globe, Zap } from 'lucide-react';
 
 function App() {
@@ -19,31 +17,11 @@ function App() {
   const [sortBy, setSortBy] = useState('distance');
   const [filterBy, setFilterBy] = useState('all');
   const [viewMode, setViewMode] = useState<'local' | 'nasa'>('nasa');
-  const [nasaStats, setNasaStats] = useState({ total_planets: 0 });
-  const [backendAvailable, setBackendAvailable] = useState(true);
+  const [nasaStats, setNasaStats] = useState({ total_planets: TOTAL_NASA_PLANETS });
 
   // Process exoplanets with extended analysis
   const processedPlanets = useMemo(() => {
     return clusterPlanets(exoplanets);
-  }, []);
-
-  // Load NASA stats
-  React.useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const stats = await apiService.getPlanetStats();
-        if (stats) {
-          setNasaStats({ total_planets: stats.total_planets });
-        } else {
-          // Fallback to local dataset stats
-          setNasaStats({ total_planets: TOTAL_NASA_PLANETS });
-        }
-      } catch (error) {
-        console.warn('Failed to load NASA stats, using local data');
-        setNasaStats({ total_planets: TOTAL_NASA_PLANETS });
-      }
-    };
-    loadStats();
   }, []);
 
   const handleNasaPlanetSelect = async (planetName: string) => {
@@ -184,14 +162,13 @@ function App() {
                 <div className="flex bg-white/10 rounded-lg p-1">
                   <button
                     onClick={() => setViewMode('nasa')}
-                    disabled={!backendAvailable}
-                    className={`px-3 py-1 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    className={`px-3 py-1 rounded text-sm transition-colors ${
                       viewMode === 'nasa' 
                         ? 'bg-cyan-600 text-white' 
                         : 'text-gray-300 hover:text-white'
                     }`}
                   >
-                    NASA Archive {!backendAvailable && '(Starting...)'}
+                    NASA Archive
                   </button>
                   <button
                     onClick={() => setViewMode('local')}
@@ -209,10 +186,7 @@ function App() {
                 <div className="hidden md:flex items-center gap-6 text-sm">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-cyan-400">
-                      {viewMode === 'nasa' ? 
-                        (backendAvailable ? (nasaStats.total_planets || 0).toLocaleString() : '...') : 
-                        stats.totalPlanets
-                      }
+                      {viewMode === 'nasa' ? nasaStats.total_planets.toLocaleString() : stats.totalPlanets}
                     </div>
                     <div className="text-gray-400">Total Planets</div>
                   </div>
@@ -240,19 +214,16 @@ function App() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Backend Status Check (hidden) */}
-          <BackendStatus onStatusChange={setBackendAvailable} />
-
           {viewMode === 'nasa' ? (
             <>
               {/* NASA Archive View */}
               <div className="mb-8 text-center">
                 <h2 className="text-2xl font-bold text-white mb-4">NASA Exoplanet Archive</h2>
-                <p className="text-gray-300 mb-2">Live access to 5900+ confirmed exoplanets</p>
-                <p className="text-gray-500 text-sm">Direct NASA API connection with latest discoveries and fuzzy search</p>
+                <p className="text-gray-300 mb-2">Access to 5900+ confirmed exoplanets</p>
+                <p className="text-gray-500 text-sm">Real NASA data with latest discoveries and advanced search</p>
               </div>
               
-              <EnhancedNASAPlanetGrid 
+              <DirectNASAPlanetGrid 
                 onPlanetSelect={(planetName) => {
                   handleNasaPlanetSelect(planetName);
                 }} 
