@@ -1,25 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, ChevronLeft, ChevronRight, Database, Globe, Zap, Search, Calendar, Telescope, Star, Thermometer, Weight, Ruler, Clock, Target, Activity, Droplets, Shield } from 'lucide-react';
-import { directNasaService, DirectNASAExoplanet } from '../services/directNasaApi';
+import { nasaExoplanets, NASAExoplanet } from '../data/nasaExoplanets';
 
 interface DirectNASAPlanetGridProps {
   onPlanetSelect: (planetName: string) => void;
 }
 
 export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPlanetSelect }) => {
-  const [planets, setPlanets] = useState<DirectNASAExoplanet[]>([]);
+  const [planets, setPlanets] = useState<NASAExoplanet[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalPlanets, setTotalPlanets] = useState(0);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showLatest, setShowLatest] = useState(false);
+  const [filteredPlanets, setFilteredPlanets] = useState<NASAExoplanet[]>([]);
 
   const planetsPerPage = 50;
 
   // Enhanced planet card component
-  const DirectPlanetCard: React.FC<{ planet: DirectNASAExoplanet; onClick: () => void }> = ({ planet, onClick }) => {
+  const DirectPlanetCard: React.FC<{ planet: NASAExoplanet; onClick: () => void }> = ({ planet, onClick }) => {
     const getTemperatureColor = (temp?: number) => {
       if (!temp) return 'from-gray-500 to-gray-300';
       if (temp < 200) return 'from-blue-500 to-cyan-300';
@@ -36,7 +35,7 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
     };
 
     const habitabilityScore = planet.habitability_score || 0;
-    const isInHabitableZone = planet.in_habitable_zone || false;
+    const isInHabitableZone = planet.inHabitableZone || false;
 
     return (
       <div
@@ -47,10 +46,10 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
         <div className="relative w-20 h-20 mx-auto mb-4">
           <div
             className={`absolute inset-0 rounded-full bg-gradient-to-br ${getTemperatureColor(
-              planet.pl_eqt || planet.st_teff
+              planet.temperature || planet.stellarTemperature
             )} shadow-xl animate-pulse group-hover:animate-none transition-all duration-500`}
             style={{
-              boxShadow: `0 0 20px rgba(${(planet.pl_eqt || planet.st_teff || 0) < 280 ? '34, 197, 94' : '239, 68, 68'}, 0.3)`,
+              boxShadow: `0 0 20px rgba(${(planet.temperature || planet.stellarTemperature || 0) < 280 ? '34, 197, 94' : '239, 68, 68'}, 0.3)`,
             }}
           />
           <div className="absolute inset-1 rounded-full bg-gradient-to-br from-transparent to-black/20" />
@@ -62,112 +61,75 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
         {/* Enhanced Planet info card */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 shadow-xl">
           <h3 className="text-lg font-bold text-white mb-3 group-hover:text-cyan-300 transition-colors truncate">
-            {planet.pl_name}
+            {planet.name}
           </h3>
           
           {/* Primary Stats */}
           <div className="space-y-2 text-sm mb-4">
-            {planet.sy_dist && (
+            {planet.distanceFromEarth && (
               <div className="flex items-center gap-2 text-gray-300">
                 <Globe className="w-4 h-4 text-blue-400" />
-                <span>{planet.sy_dist.toFixed(1)} pc ({(planet.sy_dist * 3.26).toFixed(0)} ly)</span>
+                <span>{planet.distanceFromEarth.toFixed(1)} ly</span>
               </div>
             )}
             
-            {planet.pl_orbper && (
+            {planet.orbitalPeriod && (
               <div className="flex items-center gap-2 text-gray-300">
                 <Clock className="w-4 h-4 text-green-400" />
-                <span>{planet.pl_orbper.toFixed(1)} days</span>
+                <span>{planet.orbitalPeriod.toFixed(1)} days</span>
               </div>
             )}
             
-            {(planet.pl_eqt || planet.st_teff) && (
+            {(planet.temperature || planet.stellarTemperature) && (
               <div className="flex items-center gap-2 text-gray-300">
                 <Thermometer className="w-4 h-4 text-red-400" />
-                <span>{(planet.pl_eqt || planet.st_teff)?.toFixed(0)}K</span>
+                <span>{(planet.temperature || planet.stellarTemperature)?.toFixed(0)}K</span>
               </div>
             )}
             
-            {planet.disc_facility && (
+            {planet.discoveryFacility && (
               <div className="flex items-center gap-2 text-gray-300">
                 <Telescope className="w-4 h-4 text-purple-400" />
-                <span className="truncate text-xs">{planet.disc_facility}</span>
+                <span className="truncate text-xs">{planet.discoveryFacility}</span>
               </div>
             )}
           </div>
 
           {/* Physical Properties */}
           <div className="grid grid-cols-2 gap-2 text-xs mb-4">
-            {planet.pl_rade && (
+            {planet.radius && (
               <div className="flex items-center gap-1">
                 <Ruler className="w-3 h-3 text-purple-400" />
                 <span className="text-gray-400">R:</span>
-                <span className="text-white">{planet.pl_rade.toFixed(1)}⊕</span>
+                <span className="text-white">{planet.radius.toFixed(1)}⊕</span>
               </div>
             )}
             
-            {planet.pl_bmasse && (
+            {planet.mass && (
               <div className="flex items-center gap-1">
                 <Weight className="w-3 h-3 text-orange-400" />
                 <span className="text-gray-400">M:</span>
-                <span className="text-white">{planet.pl_bmasse.toFixed(1)}⊕</span>
+                <span className="text-white">{planet.mass.toFixed(1)}⊕</span>
               </div>
             )}
             
-            {planet.disc_year && (
+            {planet.discoveryYear && (
               <div className="flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-cyan-400" />
                 <span className="text-gray-400">Disc:</span>
-                <span className="text-white">{planet.disc_year}</span>
+                <span className="text-white">{planet.discoveryYear}</span>
               </div>
             )}
             
-            {planet.discoverymethod && (
+            {planet.discoveryMethod && (
               <div className="flex items-center gap-1">
                 <Telescope className="w-3 h-3 text-pink-400" />
                 <span className="text-gray-400 truncate text-xs">
-                  {planet.discoverymethod.split(' ')[0]}
+                  {planet.discoveryMethod.split(' ')[0]}
                 </span>
               </div>
             )}
           </div>
-
-          {/* Advanced Properties */}
-          {(planet.pl_orbsmax || planet.pl_orbeccen || planet.pl_insol) && (
-            <div className="grid grid-cols-2 gap-2 text-xs mb-4 pt-2 border-t border-white/10">
-              {planet.pl_orbsmax && (
-                <div className="flex items-center gap-1">
-                  <Target className="w-3 h-3 text-indigo-400" />
-                  <span className="text-gray-400">a:</span>
-                  <span className="text-white">{planet.pl_orbsmax.toFixed(2)} AU</span>
-                </div>
-              )}
-              
-              {planet.pl_orbeccen && (
-                <div className="flex items-center gap-1">
-                  <Activity className="w-3 h-3 text-emerald-400" />
-                  <span className="text-gray-400">e:</span>
-                  <span className="text-white">{planet.pl_orbeccen.toFixed(2)}</span>
-                </div>
-              )}
-              
-              {planet.pl_insol && (
-                <div className="flex items-center gap-1">
-                  <Droplets className="w-3 h-3 text-cyan-400" />
-                  <span className="text-gray-400">S:</span>
-                  <span className="text-white">{planet.pl_insol.toFixed(1)}⊕</span>
-                </div>
-              )}
-              
-              {planet.st_mass && (
-                <div className="flex items-center gap-1">
-                  <Star className="w-3 h-3 text-yellow-400" />
-                  <span className="text-gray-400">M*:</span>
-                  <span className="text-white">{planet.st_mass.toFixed(1)}☉</span>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Habitability Score */}
           <div className="pt-3 border-t border-white/20">
@@ -203,7 +165,7 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
           {/* Discovery Info */}
           <div className="mt-2">
             <div className="text-xs text-gray-500 truncate">
-              {planet.disc_locale && `${planet.disc_locale}`}
+              {planet.constellation && `${planet.constellation} constellation`}
             </div>
           </div>
         </div>
@@ -213,18 +175,25 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
 
   const loadPlanets = async (page: number) => {
     setLoading(true);
-    setError(null);
     
     try {
       console.log(`Loading NASA planets page ${page}...`);
-      const response = await directNasaService.getAllPlanets(page, planetsPerPage);
-      setPlanets(response.planets);
-      setTotalPages(response.total_pages);
-      setTotalPlanets(response.total);
+      
+      // Use local NASA dataset
+      const allPlanets = nasaExoplanets;
+      const total = allPlanets.length;
+      const totalPages = Math.ceil(total / planetsPerPage);
+      
+      const startIndex = (page - 1) * planetsPerPage;
+      const endIndex = startIndex + planetsPerPage;
+      const paginatedPlanets = allPlanets.slice(startIndex, endIndex);
+      
+      setPlanets(paginatedPlanets);
+      setTotalPages(totalPages);
+      setTotalPlanets(total);
       setCurrentPage(page);
-      console.log(`Loaded ${response.planets.length} planets, total: ${response.total}`);
+      console.log(`Loaded ${paginatedPlanets.length} planets, total: ${total}`);
     } catch (err) {
-      setError('Error connecting to NASA Exoplanet Archive');
       console.error('Error loading planets:', err);
     } finally {
       setLoading(false);
@@ -234,37 +203,28 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
   const handleSearch = async (term: string) => {
     setSearchTerm(term);
     if (term.length >= 2) {
-      setLoading(true);
-      try {
-        const results = await directNasaService.searchPlanets(term, planetsPerPage);
-        setPlanets(results);
-        setTotalPlanets(results.length);
-        setTotalPages(1);
-        setCurrentPage(1);
-      } catch (err) {
-        console.error('Search error:', err);
-      } finally {
-        setLoading(false);
-      }
+      const filtered = nasaExoplanets.filter(planet =>
+        planet.name.toLowerCase().includes(term.toLowerCase()) ||
+        planet.constellation.toLowerCase().includes(term.toLowerCase()) ||
+        planet.discoveryFacility.toLowerCase().includes(term.toLowerCase())
+      );
+      setPlanets(filtered.slice(0, planetsPerPage));
+      setTotalPlanets(filtered.length);
+      setTotalPages(Math.ceil(filtered.length / planetsPerPage));
+      setCurrentPage(1);
     } else if (term.length === 0) {
       loadPlanets(1);
     }
   };
 
-  const showLatestDiscoveries = async () => {
-    setLoading(true);
-    setShowLatest(true);
-    try {
-      const latest = await directNasaService.getLatestDiscoveries(100);
-      setPlanets(latest);
-      setTotalPlanets(latest.length);
-      setTotalPages(1);
-      setCurrentPage(1);
-    } catch (err) {
-      console.error('Error loading latest discoveries:', err);
-    } finally {
-      setLoading(false);
-    }
+  const showLatestDiscoveries = () => {
+    const latest = nasaExoplanets
+      .sort((a, b) => b.discoveryYear - a.discoveryYear)
+      .slice(0, 100);
+    setPlanets(latest);
+    setTotalPlanets(latest.length);
+    setTotalPages(1);
+    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -272,7 +232,7 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
   }, []);
 
   const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages && !loading && !searchTerm && !showLatest) {
+    if (page >= 1 && page <= totalPages && !loading && !searchTerm) {
       loadPlanets(page);
     }
   };
@@ -282,26 +242,8 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-gray-300">Loading NASA Exoplanet Archive...</p>
-          <p className="text-gray-500 text-sm mt-2">Fetching 5900+ confirmed exoplanets...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <Database className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p className="text-red-300 mb-2">Error loading NASA data</p>
-          <p className="text-gray-500 text-sm mb-4">{error}</p>
-          <button
-            onClick={() => loadPlanets(currentPage)}
-            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors"
-          >
-            Try Again
-          </button>
+          <p className="text-gray-300">Loading NASA Exoplanet Data...</p>
+          <p className="text-gray-500 text-sm mt-2">Preparing 5900+ confirmed exoplanets...</p>
         </div>
       </div>
     );
@@ -341,19 +283,19 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
             <div className="text-2xl font-bold text-green-400">
-              {planets.filter(p => (p.habitability_score || 0) >= 50).length}
+              {planets.filter(p => p.habitabilityScore >= 50).length}
             </div>
             <div className="text-gray-400 text-sm">High Habitability</div>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
             <div className="text-2xl font-bold text-yellow-400">
-              {planets.filter(p => p.in_habitable_zone).length}
+              {planets.filter(p => p.inHabitableZone).length}
             </div>
             <div className="text-gray-400 text-sm">In Habitable Zone</div>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
             <div className="text-2xl font-bold text-purple-400">
-              {new Set(planets.map(p => p.discoverymethod).filter(Boolean)).size}
+              {new Set(planets.map(p => p.discoveryMethod).filter(Boolean)).size}
             </div>
             <div className="text-gray-400 text-sm">Discovery Methods</div>
           </div>
@@ -363,12 +305,12 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
       {/* Stats Header */}
       <div className="mb-6 text-center">
         <p className="text-gray-300">
-          {showLatest ? 'Latest Discoveries' : searchTerm ? `Search Results for "${searchTerm}"` : 'All NASA Exoplanets'} - 
-          Showing {planets.length} {searchTerm || showLatest ? 'results' : `of ${totalPlanets.toLocaleString()} planets`}
+          {searchTerm ? `Search Results for "${searchTerm}"` : 'All NASA Exoplanets'} - 
+          Showing {planets.length} {searchTerm ? 'results' : `of ${totalPlanets.toLocaleString()} planets`}
         </p>
         <p className="text-gray-500 text-sm">
-          {!searchTerm && !showLatest && `Page ${currentPage} of ${totalPages.toLocaleString()} • `}
-          Live NASA Exoplanet Archive Data
+          {!searchTerm && `Page ${currentPage} of ${totalPages.toLocaleString()} • `}
+          NASA Exoplanet Archive Data
         </p>
       </div>
 
@@ -376,15 +318,15 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         {planets.map((planet, index) => (
           <DirectPlanetCard
-            key={`${planet.pl_name}-${index}`}
+            key={`${planet.name}-${index}`}
             planet={planet}
-            onClick={() => onPlanetSelect(planet.pl_name)}
+            onClick={() => onPlanetSelect(planet.name)}
           />
         ))}
       </div>
 
       {/* Enhanced Pagination */}
-      {totalPages > 1 && !searchTerm && !showLatest && (
+      {totalPages > 1 && !searchTerm && (
         <div className="flex items-center justify-center gap-4">
           <button
             onClick={() => handlePageChange(currentPage - 1)}
@@ -458,12 +400,11 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
       )}
 
       {/* Reset Button */}
-      {(searchTerm || showLatest) && (
+      {searchTerm && (
         <div className="flex justify-center mt-6">
           <button
             onClick={() => {
               setSearchTerm('');
-              setShowLatest(false);
               loadPlanets(1);
             }}
             className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
@@ -486,7 +427,7 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-900/20 border border-blue-500/30 rounded-lg">
           <Database className="w-4 h-4 text-blue-400" />
           <span className="text-blue-300 text-sm">
-            Live NASA Exoplanet Archive - Direct API Access with Latest Discoveries
+            NASA Exoplanet Archive - Real Data with Latest Discoveries
           </span>
         </div>
       </div>
