@@ -2,6 +2,24 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   ? '/api' 
   : 'http://localhost:5000/api';
 
+// Add timeout to fetch requests
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+};
+
 export interface PlanetSearchResult {
   name: string;
   match_score: number;
@@ -45,12 +63,12 @@ export interface PlanetStats {
 class ApiService {
   async searchPlanets(query: string, limit: number = 5): Promise<PlanetSearchResult[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/planets/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/planets/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-      });
+      }, 15000);
       if (!response.ok) throw new Error('Search failed');
       const data = await response.json();
       return data.results;
@@ -62,12 +80,12 @@ class ApiService {
 
   async getPlanetDetails(planetName: string): Promise<PlanetDetails | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/planets/${encodeURIComponent(planetName)}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/planets/${encodeURIComponent(planetName)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-      });
+      }, 15000);
       if (!response.ok) throw new Error('Planet not found');
       return await response.json();
     } catch (error) {
@@ -78,14 +96,17 @@ class ApiService {
 
   async getAllPlanets(page: number = 1, perPage: number = 100): Promise<PlanetsResponse | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/planets/all?page=${page}&per_page=${perPage}`, {
+      console.log(`Fetching planets from backend: page ${page}, per_page ${perPage}`);
+      const response = await fetchWithTimeout(`${API_BASE_URL}/planets/all?page=${page}&per_page=${perPage}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-      });
+      }, 30000); // Longer timeout for large datasets
       if (!response.ok) throw new Error('Failed to fetch planets');
-      return await response.json();
+      const data = await response.json();
+      console.log(`Backend returned ${data.planets?.length || 0} planets, total: ${data.total || 0}`);
+      return data;
     } catch (error) {
       console.warn('Planets service unavailable:', error);
       return null;
@@ -94,12 +115,12 @@ class ApiService {
 
   async getPlanetStats(): Promise<PlanetStats | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/planets/stats`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/planets/stats`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-      });
+      }, 10000);
       if (!response.ok) throw new Error('Failed to fetch stats');
       return await response.json();
     } catch (error) {
@@ -110,12 +131,15 @@ class ApiService {
 
   async checkHealth(): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/health`, {
+      console.log('Checking backend health...');
+      const response = await fetchWithTimeout(`${API_BASE_URL}/health`, {
         method: 'GET',
-        timeout: 5000,
-      });
-      return response.ok;
+      }, 5000);
+      const isHealthy = response.ok;
+      console.log(`Backend health check: ${isHealthy ? 'healthy' : 'unhealthy'}`);
+      return isHealthy;
     } catch (error) {
+      console.log('Backend health check failed:', error);
       return false;
     }
   }
