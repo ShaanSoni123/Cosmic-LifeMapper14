@@ -170,7 +170,6 @@ function App() {
               
               <div className="flex items-center gap-4">
                 {/* View Mode Toggle */}
-                <BackendStatus onStatusChange={setBackendAvailable} />
                 <div className="flex bg-white/10 rounded-lg p-1">
                   <button
                     onClick={() => setViewMode('nasa')}
@@ -224,6 +223,11 @@ function App() {
                   )}
                 </div>
               </div>
+            </div>
+            
+            {/* Backend Status - moved below header */}
+            <div className="mt-4">
+              <BackendStatus onStatusChange={setBackendAvailable} />
             </div>
           </div>
         </header>
