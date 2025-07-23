@@ -93,11 +93,16 @@ export const UnifiedPlanetGrid: React.FC<UnifiedPlanetGridProps> = ({
       {/* Stats Header */}
       <div className="mb-6 text-center">
         <p className="text-gray-300">
-          Showing {paginatedPlanets.length} of {planets.length.toLocaleString()} exoplanets
+          Showing {paginatedPlanets.length} of {planets.length.toLocaleString()} precious exoplanets 🌟
           {totalPages > 1 && (
             <span className="text-gray-400"> • Page {currentPage} of {totalPages.toLocaleString()}</span>
           )}
         </p>
+        {planets.length > 5000 && (
+          <p className="text-green-400 text-sm mt-1">
+            ✨ Including your precious 5900+ planets from CSV database! ✨
+          </p>
+        )}
       </div>
 
       {/* Planet Grid */}

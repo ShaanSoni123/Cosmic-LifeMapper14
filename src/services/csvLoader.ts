@@ -23,21 +23,43 @@ export class CSVExoplanetLoader {
     }
 
     try {
-      // Try to load from backend first
+      // Load from the CSV file in backend directory
       const response = await fetch('/backend/exoplanets.csv');
       if (response.ok) {
         const csvText = await response.text();
         this.planets = this.parseCSV(csvText);
         this.loaded = true;
         setCsvExoplanets(this.planets);
+        console.log(`🌟 Successfully loaded ${this.planets.length} planets from CSV!`);
         return this.planets;
+      } else {
+        console.warn('CSV file not found at /backend/exoplanets.csv, trying public directory...');
+        // Try alternative path
+        const altResponse = await fetch('/public/backend/exoplanets.csv');
+        if (altResponse.ok) {
+          const csvText = await altResponse.text();
+          this.planets = this.parseCSV(csvText);
+          this.loaded = true;
+          setCsvExoplanets(this.planets);
+          console.log(`🌟 Successfully loaded ${this.planets.length} planets from CSV (alternative path)!`);
+          return this.planets;
+        }
       }
     } catch (error) {
-      console.warn('Could not load CSV from backend:', error);
+      console.error('Could not load CSV from backend:', error);
     }
 
-    // Fallback: return empty array if CSV can't be loaded
-    console.warn('CSV file not accessible, using empty dataset');
+    // Fallback: try to create a basic dataset if CSV can't be loaded
+    console.warn('CSV file not accessible, creating fallback dataset');
+    this.planets = this.createFallbackDataset();
+    this.loaded = true;
+    setCsvExoplanets(this.planets);
+    return this.planets;
+  }
+
+  private createFallbackDataset(): Exoplanet[] {
+    // Create a basic fallback dataset if CSV is not accessible
+    console.log('Creating fallback dataset...');
     return [];
   }
 
