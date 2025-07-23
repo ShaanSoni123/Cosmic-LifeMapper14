@@ -1,97 +1,132 @@
 import React, { useState, useMemo } from 'react';
 import { StarField } from './components/StarField';
-import { PlanetCard } from './components/PlanetCard';
 import { EnhancedPlanetCard } from './components/EnhancedPlanetCard';
 import { PlanetModal } from './components/PlanetModal';
 import { SearchFilter } from './components/SearchFilter';
-import { PlanetSearch } from './components/PlanetSearch';
-import { DirectNASAPlanetGrid } from './components/DirectNASAPlanetGrid';
-import { SimplePlanetList } from './components/SimplePlanetList';
+import { UnifiedPlanetGrid } from './components/UnifiedPlanetGrid';
 import { nasaExoplanets, TOTAL_NASA_PLANETS } from './data/nasaExoplanets';
 import { exoplanets } from './data/exoplanets';
 import { csvLoader } from './services/csvLoader';
-import { csvExoplanets } from './data/csvExoplanets';
 import { clusterPlanets, ExtendedExoplanet } from './utils/exoplanetAnalysis';
-import { Telescope, Globe, Zap } from 'lucide-react';
+import { Telescope, Globe, Zap, Database } from 'lucide-react';
 
 function App() {
   const [selectedPlanet, setSelectedPlanet] = useState<ExtendedExoplanet | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('distance');
   const [filterBy, setFilterBy] = useState('all');
-  const [viewMode, setViewMode] = useState<'local' | 'nasa'>('nasa');
-  const [nasaStats, setNasaStats] = useState({ total_planets: TOTAL_NASA_PLANETS });
   const [csvLoaded, setCsvLoaded] = useState(false);
   const [csvPlanets, setCsvPlanets] = useState<ExtendedExoplanet[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const planetsPerPage = 100;
+  const [allPlanets, setAllPlanets] = useState<ExtendedExoplanet[]>([]);
 
-  // Load CSV data on component mount
+  // Load and merge all planet data on component mount
   React.useEffect(() => {
-    const loadCSVData = async () => {
+    const loadAllPlanetData = async () => {
       try {
+        // Load CSV data
         await csvLoader.loadCSVData();
-        const planets = csvLoader.getPlanets();
-        const processedPlanets = clusterPlanets(planets);
+        const csvPlanets = csvLoader.getPlanets();
+        const processedCsvPlanets = clusterPlanets(csvPlanets);
         setCsvPlanets(processedPlanets);
         setCsvLoaded(true);
-        console.log(`Loaded ${planets.length} planets from CSV`);
+        
+        // Convert NASA exoplanets to ExtendedExoplanet format
+        const nasaPlanets: ExtendedExoplanet[] = nasaExoplanets.map(planet => ({
+          id: planet.id,
+          name: planet.name,
+          distanceFromEarth: planet.distanceFromEarth,
+          orbitalPeriod: planet.orbitalPeriod,
+          temperature: planet.temperature,
+          starType: planet.starType,
+          biosignatures: [], // NASA data doesn't have biosignatures
+          radius: planet.radius,
+          mass: planet.mass,
+          discoveryYear: planet.discoveryYear,
+          constellation: planet.constellation,
+          habitabilityScore: planet.habitabilityScore,
+          surfaceTemperature: planet.temperature,
+          surfaceGravity: planet.mass / Math.pow(planet.radius, 2),
+          waterRetentionPotential: Math.min(1, planet.habitabilityScore / 100),
+          radiationHazardIndex: Math.max(0, 1 - planet.habitabilityScore / 100),
+          cluster: getCluster(planet.habitabilityScore),
+          clusterLabel: getClusterLabel(planet.habitabilityScore),
+          inHabitableZone: planet.inHabitableZone
+        }));
+        
+        // Merge all planets and remove duplicates
+        const mergedPlanets = [...processedCsvPlanets, ...nasaPlanets, ...clusterPlanets(exoplanets)];
+        const uniquePlanets = removeDuplicatePlanets(mergedPlanets);
+        
+        setAllPlanets(uniquePlanets);
+        console.log(`Merged and deduplicated ${uniquePlanets.length} total planets`);
       } catch (error) {
-        console.error('Failed to load CSV data:', error);
-        // Fallback to hardcoded exoplanets
-        const processedPlanets = clusterPlanets(exoplanets);
-        setCsvPlanets(processedPlanets);
+        console.error('Failed to load planet data:', error);
+        // Fallback to NASA + curated exoplanets only
+        const nasaPlanets: ExtendedExoplanet[] = nasaExoplanets.map(planet => ({
+          id: planet.id,
+          name: planet.name,
+          distanceFromEarth: planet.distanceFromEarth,
+          orbitalPeriod: planet.orbitalPeriod,
+          temperature: planet.temperature,
+          starType: planet.starType,
+          biosignatures: [],
+          radius: planet.radius,
+          mass: planet.mass,
+          discoveryYear: planet.discoveryYear,
+          constellation: planet.constellation,
+          habitabilityScore: planet.habitabilityScore,
+          surfaceTemperature: planet.temperature,
+          surfaceGravity: planet.mass / Math.pow(planet.radius, 2),
+          waterRetentionPotential: Math.min(1, planet.habitabilityScore / 100),
+          radiationHazardIndex: Math.max(0, 1 - planet.habitabilityScore / 100),
+          cluster: getCluster(planet.habitabilityScore),
+          clusterLabel: getClusterLabel(planet.habitabilityScore),
+          inHabitableZone: planet.inHabitableZone
+        }));
+        
+        const mergedPlanets = [...nasaPlanets, ...clusterPlanets(exoplanets)];
+        const uniquePlanets = removeDuplicatePlanets(mergedPlanets);
+        setAllPlanets(uniquePlanets);
         setCsvLoaded(true);
       }
     };
 
-    loadCSVData();
+    loadAllPlanetData();
   }, []);
 
-  // Process exoplanets with extended analysis
-  const processedPlanets = useMemo(() => {
-    if (csvLoaded && csvPlanets.length > 0) {
-      return csvPlanets;
+  // Remove duplicate planets based on name similarity
+  const removeDuplicatePlanets = (planets: ExtendedExoplanet[]): ExtendedExoplanet[] => {
+    const uniquePlanets: ExtendedExoplanet[] = [];
+    const seenNames = new Set<string>();
+    
+    for (const planet of planets) {
+      const normalizedName = planet.name.toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/-/g, '')
+        .replace(/\./g, '');
+      
+      // Check if we've seen a similar name
+      let isDuplicate = false;
+      for (const seenName of seenNames) {
+        if (normalizedName === seenName || 
+            normalizedName.includes(seenName) || 
+            seenName.includes(normalizedName)) {
+          isDuplicate = true;
+          break;
+        }
+      }
+      
+      if (!isDuplicate) {
+        seenNames.add(normalizedName);
+        uniquePlanets.push(planet);
+      }
     }
-    return clusterPlanets(exoplanets);
-  }, [csvLoaded, csvPlanets]);
-
-  const handleNasaPlanetSelect = async (planetName: string) => {
-    // Find planet in our NASA dataset
-    const planetDetails = nasaExoplanets.find(p => p.name === planetName);
-    if (planetDetails) {
-      // Convert to ExtendedExoplanet format for modal
-      const extendedPlanet: ExtendedExoplanet = {
-        id: planetDetails.id,
-        name: planetDetails.name,
-        distanceFromEarth: planetDetails.distanceFromEarth,
-        orbitalPeriod: planetDetails.orbitalPeriod,
-        temperature: planetDetails.temperature,
-        starType: planetDetails.starType,
-        biosignatures: [],
-        radius: planetDetails.radius,
-        mass: planetDetails.mass,
-        discoveryYear: planetDetails.discoveryYear,
-        constellation: planetDetails.constellation,
-        habitabilityScore: planetDetails.habitabilityScore,
-        surfaceTemperature: planetDetails.temperature,
-        surfaceGravity: planetDetails.mass / Math.pow(planetDetails.radius, 2),
-        waterRetentionPotential: Math.min(1, planetDetails.habitabilityScore / 100),
-        radiationHazardIndex: Math.max(0, 1 - planetDetails.habitabilityScore / 100),
-        cluster: getCluster(planetDetails.habitabilityScore),
-        clusterLabel: getClusterLabel(planetDetails.habitabilityScore),
-        inHabitableZone: planetDetails.inHabitableZone
-      };
-      setSelectedPlanet(extendedPlanet);
-    }
+    
+    return uniquePlanets;
   };
 
-  const getStarType = (temp: number): string => {
-    if (temp > 7500) return 'A';
-    if (temp > 6000) return 'F';
-    if (temp > 5200) return 'G';
-    if (temp > 3700) return 'K';
-    return 'M';
+  const handlePlanetSelect = (planet: ExtendedExoplanet) => {
+    setSelectedPlanet(planet);
   };
 
   const getCluster = (score: number): number => {
@@ -107,9 +142,8 @@ function App() {
     if (score >= 25) return "Low Habitability Potential";
     return "Very Low Habitability Potential";
   };
-  // Filter and sort planets
   const filteredAndSortedPlanets = useMemo(() => {
-    let filtered = processedPlanets.filter(planet => {
+    let filtered = allPlanets.filter(planet => {
       const matchesSearch = planet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            planet.constellation.toLowerCase().includes(searchTerm.toLowerCase());
       
@@ -144,27 +178,16 @@ function App() {
     });
 
     return filtered;
-  }, [processedPlanets, searchTerm, sortBy, filterBy]);
-
-  // Calculate pagination for curated view
-  const totalPages = Math.ceil(filteredAndSortedPlanets.length / planetsPerPage);
-  const startIndex = (currentPage - 1) * planetsPerPage;
-  const endIndex = startIndex + planetsPerPage;
-  const paginatedPlanets = filteredAndSortedPlanets.slice(startIndex, endIndex);
-
-  // Reset to page 1 when search/filter changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterBy, sortBy]);
+  }, [allPlanets, searchTerm, sortBy, filterBy]);
 
   const stats = useMemo(() => {
-    const totalPlanets = processedPlanets.length;
-    const highHabitability = processedPlanets.filter(p => p.habitabilityScore >= 50).length;
-    const withBiosignatures = processedPlanets.filter(p => p.biosignatures.length > 0).length;
-    const inHabitableZone = processedPlanets.filter(p => p.inHabitableZone).length;
+    const totalPlanets = allPlanets.length;
+    const highHabitability = allPlanets.filter(p => p.habitabilityScore >= 50).length;
+    const withBiosignatures = allPlanets.filter(p => p.biosignatures.length > 0).length;
+    const inHabitableZone = allPlanets.filter(p => p.inHabitableZone).length;
     
     return { totalPlanets, highHabitability, withBiosignatures, inHabitableZone };
-  }, [processedPlanets]);
+  }, [allPlanets]);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -192,63 +215,32 @@ function App() {
                     smic LifeMapper
                   </h1>
                   <p className="text-gray-300">
-                    {viewMode === 'nasa' 
-                      ? `Explore ${nasaStats.total_planets.toLocaleString()}+ exoplanets from NASA Archive`
-                      : 'Discover distant worlds beyond our solar system'
-                    }
+                    Explore {stats.totalPlanets.toLocaleString()}+ exoplanets from multiple sources
                   </p>
                 </div>
               </div>
               
               <div className="flex items-center gap-4">
-                {/* View Mode Toggle */}
-                <div className="flex bg-white/10 rounded-lg p-1">
-                  <button
-                    onClick={() => setViewMode('nasa')}
-                    className={`px-3 py-1 rounded text-sm transition-colors ${
-                      viewMode === 'nasa' 
-                        ? 'bg-cyan-600 text-white' 
-                        : 'text-gray-300 hover:text-white'
-                    }`}
-                  >
-                    NASA Archive
-                  </button>
-                  <button
-                    onClick={() => setViewMode('local')}
-                    className={`px-3 py-1 rounded text-sm transition-colors ${
-                      viewMode === 'local' 
-                        ? 'bg-cyan-600 text-white' 
-                        : 'text-gray-300 hover:text-white'
-                    }`}
-                  >
-                    Curated
-                  </button>
-                </div>
-
                 {/* Stats */}
                 <div className="hidden md:flex items-center gap-6 text-sm">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-cyan-400">
-                      {viewMode === 'nasa' ? nasaStats.total_planets.toLocaleString() : stats.totalPlanets}
+                      {stats.totalPlanets.toLocaleString()}
                     </div>
                     <div className="text-gray-400">Total Planets</div>
                   </div>
-                  {viewMode === 'local' && (
-                    <>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-400">{stats.highHabitability}</div>
-                        <div className="text-gray-400">High Habitability</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-yellow-400">{stats.withBiosignatures}</div>
-                        <div className="text-gray-400">With Biosignatures</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-purple-400">{stats.inHabitableZone}</div>
-                        <div className="text-gray-400">In Habitable Zone</div>
-                      </div>
-                    </>
-                  )}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-400">{stats.highHabitability}</div>
+                    <div className="text-gray-400">High Habitability</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-400">{stats.withBiosignatures}</div>
+                    <div className="text-gray-400">With Biosignatures</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-400">{stats.inHabitableZone}</div>
+                    <div className="text-gray-400">In Habitable Zone</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -257,197 +249,52 @@ function App() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {viewMode === 'nasa' ? (
-            <>
-              {/* NASA Archive View */}
-              <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold text-white mb-4">NASA Exoplanet Archive</h2>
-                <p className="text-gray-300 mb-2">Access to 5900+ confirmed exoplanets</p>
-                <p className="text-gray-500 text-sm">Real NASA data with latest discoveries and advanced search</p>
-              </div>
-              
-              <DirectNASAPlanetGrid 
-                onPlanetSelect={(planetName) => {
-                  handleNasaPlanetSelect(planetName);
-                }} 
-              />
-            </>
-          ) : (
-            <>
-              {/* Local Curated View */}
-              <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold text-white mb-4">
-                  {csvLoaded ? 'CSV Exoplanet Database' : 'Curated Exoplanets'}
-                </h2>
-                <p className="text-gray-300 mb-2">
-                  {csvLoaded 
-                    ? `${csvPlanets.length.toLocaleString()} exoplanets loaded from CSV database`
-                    : 'Hand-picked exoplanets with detailed analysis'
-                  }
-                </p>
-                <p className="text-gray-500 text-sm">
-                  {csvLoaded 
-                    ? 'Comprehensive dataset with habitability analysis'
-                    : 'Curated selection with biosignature detection'
-                  }
-                </p>
-              </div>
+          {/* Unified Exoplanet Section */}
+          <div className="mb-8 text-center">
+            <h2 className="text-2xl font-bold text-white mb-4">
+              Comprehensive Exoplanet Database
+            </h2>
+            <p className="text-gray-300 mb-2">
+              {stats.totalPlanets.toLocaleString()} exoplanets from NASA Archive, CSV database, and curated collection
+            </p>
+            <p className="text-gray-500 text-sm">
+              Unified dataset with advanced habitability analysis and no duplicates
+            </p>
+          </div>
 
-              <SearchFilter
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                sortBy={sortBy}
-                onSortChange={setSortBy}
-                filterBy={filterBy}
-                onFilterChange={setFilterBy}
-              />
+          <SearchFilter
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            filterBy={filterBy}
+            onFilterChange={setFilterBy}
+          />
 
-              <div className="mb-6">
-                <p className="text-gray-300">
-                  Showing {paginatedPlanets.length} of {filteredAndSortedPlanets.length} {csvLoaded ? 'CSV' : 'curated'} exoplanets
-                  {totalPages > 1 && (
-                    <span className="text-gray-400"> • Page {currentPage} of {totalPages}</span>
-                  )}
-                </p>
-              </div>
-
-              {paginatedPlanets.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {paginatedPlanets.map((planet) => (
-                    <EnhancedPlanetCard
-                      key={planet.id}
-                      planet={{
-                        id: planet.id,
-                        name: planet.name,
-                        distanceFromEarth: planet.distanceFromEarth,
-                        orbitalPeriod: planet.orbitalPeriod,
-                        temperature: planet.temperature,
-                        starType: planet.starType,
-                        radius: planet.radius,
-                        mass: planet.mass,
-                        discoveryYear: planet.discoveryYear,
-                        discoveryMethod: planet.biosignatures.length > 0 ? 'Spectroscopy' : 'Transit',
-                        discoveryFacility: 'Various',
-                        constellation: planet.constellation,
-                        habitabilityScore: Math.round(planet.habitabilityScore),
-                        inHabitableZone: planet.inHabitableZone,
-                        stellarTemperature: planet.temperature,
-                        orbitalDistance: planet.orbitalPeriod / 365.25
-                      }}
-                      onClick={() => setSelectedPlanet(planet)}
-                    />
-                  ))}
-                </div>
-              ) : filteredAndSortedPlanets.length === 0 ? (
-                <div className="text-center">
-                  <Globe className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-300 mb-2">No planets found</h3>
-                  <p className="text-gray-500">Try adjusting your search or filter criteria</p>
-                </div>
-              ) : (
-                <div className="text-center">
-                  <p className="text-gray-300">Loading more planets...</p>
-                </div>
-              )}
-
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="mt-8 flex items-center justify-center gap-4">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/20 transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Previous
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                    {/* Show first page */}
-                    {currentPage > 3 && (
-                      <>
-                        <button
-                          onClick={() => setCurrentPage(1)}
-                          className="px-3 py-2 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 transition-colors"
-                        >
-                          1
-                        </button>
-                        {currentPage > 4 && <span className="text-gray-500">...</span>}
-                      </>
-                    )}
-
-                    {/* Show pages around current page */}
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                      if (page > totalPages) return null;
-                      
-                      return (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`px-3 py-2 rounded-lg transition-colors ${
-                            page === currentPage
-                              ? 'bg-cyan-600 text-white'
-                              : 'bg-white/10 text-gray-300 hover:bg-white/20'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    })}
-
-                    {/* Show last page */}
-                    {currentPage < totalPages - 2 && (
-                      <>
-                        {currentPage < totalPages - 3 && <span className="text-gray-500">...</span>}
-                        <button
-                          onClick={() => setCurrentPage(totalPages)}
-                          className="px-3 py-2 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 transition-colors"
-                        >
-                          {totalPages}
-                        </button>
-                      </>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/20 transition-colors"
-                  >
-                    Next
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+          <UnifiedPlanetGrid
+            planets={filteredAndSortedPlanets}
+            onPlanetSelect={handlePlanetSelect}
+          />
 
           {/* Quick Stats Cards for Mobile */}
-          {viewMode === 'local' && (
-            <div className="md:hidden mt-8 grid grid-cols-2 gap-4">
-              <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Globe className="w-4 h-4 text-cyan-400" />
-                  <span className="text-sm text-gray-400">Total</span>
-                </div>
-                <div className="text-xl font-bold text-white">
-                  {csvLoaded ? csvPlanets.length : stats.totalPlanets}
-                </div>
+          <div className="md:hidden mt-8 grid grid-cols-2 gap-4">
+            <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="w-4 h-4 text-cyan-400" />
+                <span className="text-sm text-gray-400">Total</span>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="w-4 h-4 text-green-400" />
-                  <span className="text-sm text-gray-400">High Habitability</span>
-                </div>
-                <div className="text-xl font-bold text-white">{stats.highHabitability}</div>
+              <div className="text-xl font-bold text-white">
+                {stats.totalPlanets}
               </div>
             </div>
-          )}
+            <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="w-4 h-4 text-green-400" />
+                <span className="text-sm text-gray-400">High Habitability</span>
+              </div>
+              <div className="text-xl font-bold text-white">{stats.highHabitability}</div>
+            </div>
+          </div>
         </main>
 
         {/* Planet Modal */}
