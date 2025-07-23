@@ -8,6 +8,8 @@ import { DirectNASAPlanetGrid } from './components/DirectNASAPlanetGrid';
 import { SimplePlanetList } from './components/SimplePlanetList';
 import { nasaExoplanets, TOTAL_NASA_PLANETS } from './data/nasaExoplanets';
 import { exoplanets } from './data/exoplanets';
+import { csvLoader } from './services/csvLoader';
+import { csvExoplanets } from './data/csvExoplanets';
 import { clusterPlanets, ExtendedExoplanet } from './utils/exoplanetAnalysis';
 import { Telescope, Globe, Zap } from 'lucide-react';
 
@@ -18,11 +20,38 @@ function App() {
   const [filterBy, setFilterBy] = useState('all');
   const [viewMode, setViewMode] = useState<'local' | 'nasa'>('nasa');
   const [nasaStats, setNasaStats] = useState({ total_planets: TOTAL_NASA_PLANETS });
+  const [csvLoaded, setCsvLoaded] = useState(false);
+  const [csvPlanets, setCsvPlanets] = useState<ExtendedExoplanet[]>([]);
+
+  // Load CSV data on component mount
+  React.useEffect(() => {
+    const loadCSVData = async () => {
+      try {
+        await csvLoader.loadCSVData();
+        const planets = csvLoader.getPlanets();
+        const processedPlanets = clusterPlanets(planets);
+        setCsvPlanets(processedPlanets);
+        setCsvLoaded(true);
+        console.log(`Loaded ${planets.length} planets from CSV`);
+      } catch (error) {
+        console.error('Failed to load CSV data:', error);
+        // Fallback to hardcoded exoplanets
+        const processedPlanets = clusterPlanets(exoplanets);
+        setCsvPlanets(processedPlanets);
+        setCsvLoaded(true);
+      }
+    };
+
+    loadCSVData();
+  }, []);
 
   // Process exoplanets with extended analysis
   const processedPlanets = useMemo(() => {
+    if (csvLoaded && csvPlanets.length > 0) {
+      return csvPlanets;
+    }
     return clusterPlanets(exoplanets);
-  }, []);
+  }, [csvLoaded, csvPlanets]);
 
   const handleNasaPlanetSelect = async (planetName: string) => {
     // Find planet in our NASA dataset
@@ -232,6 +261,24 @@ function App() {
           ) : (
             <>
               {/* Local Curated View */}
+              <div className="mb-8 text-center">
+                <h2 className="text-2xl font-bold text-white mb-4">
+                  {csvLoaded ? 'CSV Exoplanet Database' : 'Curated Exoplanets'}
+                </h2>
+                <p className="text-gray-300 mb-2">
+                  {csvLoaded 
+                    ? `${csvPlanets.length.toLocaleString()} exoplanets loaded from CSV database`
+                    : 'Hand-picked exoplanets with detailed analysis'
+                  }
+                </p>
+                <p className="text-gray-500 text-sm">
+                  {csvLoaded 
+                    ? 'Comprehensive dataset with habitability analysis'
+                    : 'Curated selection with biosignature detection'
+                  }
+                </p>
+              </div>
+
               <SearchFilter
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
@@ -243,7 +290,7 @@ function App() {
 
               <div className="mb-6">
                 <p className="text-gray-300">
-                  Showing {filteredAndSortedPlanets.length} of {processedPlanets.length} curated exoplanets
+                  Showing {filteredAndSortedPlanets.length} of {processedPlanets.length} {csvLoaded ? 'CSV' : 'curated'} exoplanets
                 </p>
               </div>
 
@@ -275,7 +322,9 @@ function App() {
                   <Globe className="w-4 h-4 text-cyan-400" />
                   <span className="text-sm text-gray-400">Total</span>
                 </div>
-                <div className="text-xl font-bold text-white">{stats.totalPlanets}</div>
+                <div className="text-xl font-bold text-white">
+                  {csvLoaded ? csvPlanets.length : stats.totalPlanets}
+                </div>
               </div>
               <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
                 <div className="flex items-center gap-2 mb-2">
