@@ -1,4 +1,4 @@
-import { Exoplanet } from '../data/exoplanets';
+import { Exoplanet } from 'backend/exoplanets.csv';
 import { setCsvExoplanets } from 'backend/exoplanets.csv';
 
 interface CSVRow {
