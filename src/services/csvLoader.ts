@@ -23,73 +23,22 @@ export class CSVExoplanetLoader {
     }
 
     try {
-      // Try to load from public directory first
-      const response = await fetch('/public/backend/exoplanets.csv');
+      // Try to load from backend first
+      const response = await fetch('/backend/exoplanets.csv');
       if (response.ok) {
         const csvText = await response.text();
         this.planets = this.parseCSV(csvText);
         this.loaded = true;
         setCsvExoplanets(this.planets);
-        console.log(`Successfully loaded ${this.planets.length} exoplanets from CSV`);
-        return this.planets;
-      }
-      
-      // Fallback: try direct backend path
-      const backupResponse = await fetch('/backend/exoplanets.csv');
-      if (backupResponse.ok) {
-        const csvText = await backupResponse.text();
-        this.planets = this.parseCSV(csvText);
-        this.loaded = true;
-        setCsvExoplanets(this.planets);
-        console.log(`Successfully loaded ${this.planets.length} exoplanets from backup CSV path`);
         return this.planets;
       }
     } catch (error) {
       console.warn('Could not load CSV from backend:', error);
     }
 
-    // Final fallback: try to generate sample data from existing structure
-    console.warn('CSV file not accessible, generating sample data from existing structure');
-    this.planets = this.generateSampleData();
-    this.loaded = true;
-    setCsvExoplanets(this.planets);
-    return this.planets;
-  }
-
-  private generateSampleData(): Exoplanet[] {
-    // Generate sample exoplanet data if CSV is not accessible
-    const samplePlanets: Exoplanet[] = [];
-    const constellations = ['Cygnus', 'Lyra', 'Draco', 'Aquarius', 'Leo', 'Virgo', 'Centaurus', 'Pegasus'];
-    const starTypes = ['G2V', 'K2V', 'M3V', 'F5V', 'M1V', 'K5V'];
-    const methods = ['Transit', 'Radial Velocity', 'Direct Imaging', 'Gravitational Microlensing'];
-    
-    for (let i = 0; i < 100; i++) {
-      const temp = 200 + Math.random() * 800;
-      const radius = 0.5 + Math.random() * 3;
-      const mass = 0.1 + Math.random() * 10;
-      
-      samplePlanets.push({
-        id: `sample-planet-${i}`,
-        name: `Sample Planet ${i + 1}`,
-        distanceFromEarth: 10 + Math.random() * 1000,
-        orbitalPeriod: 1 + Math.random() * 1000,
-        temperature: temp,
-        starType: starTypes[Math.floor(Math.random() * starTypes.length)],
-        biosignatures: Math.random() > 0.8 ? ['Water vapor', 'Oxygen'] : [],
-        radius: radius,
-        mass: mass,
-        discoveryYear: 2000 + Math.floor(Math.random() * 24),
-        constellation: constellations[Math.floor(Math.random() * constellations.length)],
-        habitabilityScore: this.calculateHabitabilityScore({
-          pl_eqt: temp.toString(),
-          pl_rade: radius.toString(),
-          pl_bmasse: mass.toString(),
-          st_teff: (5000 + Math.random() * 2000).toString()
-        })
-      });
-    }
-    
-    return samplePlanets;
+    // Fallback: return empty array if CSV can't be loaded
+    console.warn('CSV file not accessible, using empty dataset');
+    return [];
   }
 
   private parseCSV(csvText: string): Exoplanet[] {
