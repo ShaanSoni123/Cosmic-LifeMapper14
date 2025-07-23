@@ -13,7 +13,7 @@ export const UnifiedPlanetGrid: React.FC<UnifiedPlanetGridProps> = ({
   onPlanetSelect 
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const planetsPerPage = 50; // Increased from 20 to show more planets per page
+  const planetsPerPage = 100; // Show 100 planets per page as requested
 
   // Calculate pagination
   const totalPages = Math.ceil(planets.length / planetsPerPage);
@@ -93,15 +93,20 @@ export const UnifiedPlanetGrid: React.FC<UnifiedPlanetGridProps> = ({
       {/* Stats Header */}
       <div className="mb-6 text-center">
         <p className="text-gray-300">
-          Showing {paginatedPlanets.length} of {planets.length.toLocaleString()} exoplanets
+          Showing {paginatedPlanets.length} of {planets.length.toLocaleString()} confirmed exoplanets
           {totalPages > 1 && (
             <span className="text-gray-400"> • Page {currentPage} of {totalPages.toLocaleString()}</span>
           )}
         </p>
+        {totalPages > 1 && (
+          <p className="text-gray-500 text-sm mt-1">
+            {planetsPerPage} planets per page • {totalPages} total pages
+          </p>
+        )}
       </div>
 
       {/* Planet Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mb-8">
         {paginatedPlanets.map((planet) => (
           <EnhancedPlanetCard
             key={planet.id}
@@ -197,7 +202,12 @@ export const UnifiedPlanetGrid: React.FC<UnifiedPlanetGridProps> = ({
 
           {/* Page Size Info */}
           <div className="text-xs text-gray-500 text-center">
-            Showing {planetsPerPage} planets per page • {planets.length.toLocaleString()} total planets
+            Showing {planetsPerPage} planets per page • {planets.length.toLocaleString()} total confirmed exoplanets
+            {totalPages === 59 && (
+              <div className="mt-1 text-cyan-400">
+                📊 Complete dataset: 59 pages × 100 planets = 5,900+ exoplanets
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -207,7 +217,7 @@ export const UnifiedPlanetGrid: React.FC<UnifiedPlanetGridProps> = ({
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-900/20 border border-blue-500/30 rounded-lg">
           <Database className="w-4 h-4 text-blue-400" />
           <span className="text-blue-300 text-sm">
-            Unified Database - NASA Archive + CSV Data + Curated Collection (No Duplicates)
+            Complete Exoplanet Archive - {planets.length.toLocaleString()} Confirmed Planets from CSV Database
           </span>
         </div>
       </div>
