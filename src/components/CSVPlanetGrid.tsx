@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, ChevronLeft, ChevronRight, Database, Globe, Zap, Search, Calendar, Telescope, Star, Thermometer, Weight, Ruler, Clock, Target, Activity, Droplets, Shield } from 'lucide-react';
 import { csvLoader } from '../services/csvLoader';
 import { Exoplanet } from '../data/exoplanets';
+import { ExtendedExoplanet } from '../utils/exoplanetAnalysis';
 import { HabitabilityBar } from './HabitabilityBar';
 
 interface CSVPlanetGridProps {
-  onPlanetSelect: (planet: Exoplanet) => void;
+  onPlanetSelect: (planet: ExtendedExoplanet) => void;
 }
 
 export const CSVPlanetGrid: React.FC<CSVPlanetGridProps> = ({ onPlanetSelect }) => {
@@ -18,6 +19,45 @@ export const CSVPlanetGrid: React.FC<CSVPlanetGridProps> = ({ onPlanetSelect }) 
   const [filterBy, setFilterBy] = useState('all');
   const planetsPerPage = 50;
 
+  // Convert Exoplanet to ExtendedExoplanet format
+  const convertToExtendedExoplanet = (planet: Exoplanet): ExtendedExoplanet => {
+    const surfaceGravity = planet.mass / Math.pow(planet.radius, 2);
+    const waterRetentionPotential = Math.min(1, planet.habitabilityScore / 10);
+    const radiationHazardIndex = Math.max(0, 1 - planet.habitabilityScore / 10);
+    
+    // Determine cluster based on habitability score
+    let cluster: number;
+    let clusterLabel: string;
+    
+    if (planet.habitabilityScore >= 7) {
+      cluster = 0;
+      clusterLabel = "Very High Habitability Potential";
+    } else if (planet.habitabilityScore >= 5) {
+      cluster = 1;
+      clusterLabel = "Moderate to High Habitability Potential";
+    } else if (planet.habitabilityScore >= 2.5) {
+      cluster = 2;
+      clusterLabel = "Low Habitability Potential";
+    } else {
+      cluster = 3;
+      clusterLabel = "Very Low Habitability Potential";
+    }
+    
+    // Check if in habitable zone based on temperature
+    const inHabitableZone = planet.temperature >= 200 && planet.temperature <= 350;
+    
+    return {
+      ...planet,
+      habitabilityScore: planet.habitabilityScore * 10, // Convert to 0-100 scale
+      surfaceTemperature: planet.temperature,
+      surfaceGravity,
+      waterRetentionPotential,
+      radiationHazardIndex,
+      cluster,
+      clusterLabel,
+      inHabitableZone
+    };
+  };
   useEffect(() => {
     const loadCSVPlanets = async () => {
       setLoading(true);
@@ -300,7 +340,7 @@ export const CSVPlanetGrid: React.FC<CSVPlanetGridProps> = ({ onPlanetSelect }) 
           <CSVPlanetCard
             key={`${planet.id}-${index}`}
             planet={planet}
-            onClick={() => onPlanetSelect(planet)}
+            onClick={() => onPlanetSelect(convertToExtendedExoplanet(planet))}
           />
         ))}
       </div>
