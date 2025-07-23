@@ -11,6 +11,14 @@ interface PlanetModalProps {
 export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClose }) => {
   if (!isOpen) return null;
 
+  // Ensure we have valid data for display
+  const safeHabitabilityScore = planet.habitabilityScore || 0;
+  const safeSurfaceTemperature = planet.surfaceTemperature || planet.temperature || 288;
+  const safeSurfaceGravity = planet.surfaceGravity || 1.0;
+  const safeWaterRetention = planet.waterRetentionPotential || 0;
+  const safeRadiationHazard = planet.radiationHazardIndex || 0;
+  const safeClusterLabel = planet.clusterLabel || "Unknown Habitability Potential";
+
   const getTemperatureColor = (temp: number) => {
     if (temp < 200) return 'from-blue-500 to-cyan-300';
     if (temp < 280) return 'from-green-500 to-emerald-300';
@@ -19,8 +27,9 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
   };
 
   const getHabitabilityColor = (score: number) => {
-    if (score >= 80) return 'text-green-400';
-    if (score >= 60) return 'text-yellow-400';
+    if (score >= 70) return 'text-green-400';
+    if (score >= 50) return 'text-yellow-400';
+    if (score >= 25) return 'text-orange-400';
     return 'text-red-400';
   };
 
@@ -61,8 +70,8 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span className="text-gray-400">Habitability:</span>
-                  <span className={`text-xl font-bold ${getHabitabilityColor(planet.habitabilityScore)}`}>
-                    {planet.habitabilityScore.toFixed(1)}/10
+                  <span className={`text-xl font-bold ${getHabitabilityColor(safeHabitabilityScore)}`}>
+                    {safeHabitabilityScore.toFixed(1)}/100
                   </span>
                 </div>
                 
@@ -126,7 +135,7 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                   <Thermometer className="w-5 h-5 text-orange-400" />
                   <span className="text-gray-300">Surface Temperature</span>
                 </div>
-                <span className="text-white font-medium">{planet.surfaceTemperature.toFixed(1)}K ({Math.round(planet.surfaceTemperature - 273.15)}°C)</span>
+                <span className="text-white font-medium">{safeSurfaceTemperature.toFixed(1)}K ({Math.round(safeSurfaceTemperature - 273.15)}°C)</span>
               </div>
               
               <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
@@ -134,7 +143,7 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                   <Activity className="w-5 h-5 text-green-400" />
                   <span className="text-gray-300">Surface Gravity</span>
                 </div>
-                <span className="text-white font-medium">{planet.surfaceGravity.toFixed(2)} Earth g</span>
+                <span className="text-white font-medium">{safeSurfaceGravity.toFixed(2)} Earth g</span>
               </div>
             </div>
           </div>
@@ -149,7 +158,7 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                   <Droplets className="w-5 h-5 text-cyan-400" />
                   <span className="text-gray-300">Water Retention</span>
                 </div>
-                <span className="text-white font-medium">{(planet.waterRetentionPotential * 100).toFixed(1)}%</span>
+                <span className="text-white font-medium">{(safeWaterRetention * 100).toFixed(1)}%</span>
               </div>
               
               <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
@@ -157,7 +166,7 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                   <Shield className="w-5 h-5 text-red-400" />
                   <span className="text-gray-300">Radiation Hazard</span>
                 </div>
-                <span className="text-white font-medium">{(planet.radiationHazardIndex * 100).toFixed(1)}%</span>
+                <span className="text-white font-medium">{(safeRadiationHazard * 100).toFixed(1)}%</span>
               </div>
               
               <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
@@ -165,7 +174,7 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                   <Target className="w-5 h-5 text-purple-400" />
                   <span className="text-gray-300">Cluster Category</span>
                 </div>
-                <span className="text-white font-medium text-sm">{planet.clusterLabel}</span>
+                <span className="text-white font-medium text-sm">{safeClusterLabel}</span>
               </div>
             </div>
           </div>
@@ -233,8 +242,8 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                   Overall Habitability Assessment
                 </h4>
                 <div className="text-right">
-                  <div className={`text-3xl font-bold ${getHabitabilityColor(planet.habitabilityScore)}`}>
-                    {planet.habitabilityScore.toFixed(1)}/100
+                  <div className={`text-3xl font-bold ${getHabitabilityColor(safeHabitabilityScore)}`}>
+                    {safeHabitabilityScore.toFixed(1)}/100
                   </div>
                   <div className="text-sm text-gray-400">Composite Score</div>
                 </div>
@@ -243,12 +252,12 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
               <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
                 <div
                   className={`h-3 rounded-full transition-all duration-1000 ${
-                    planet.habitabilityScore >= 70 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
-                    planet.habitabilityScore >= 50 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' :
-                    planet.habitabilityScore >= 25 ? 'bg-gradient-to-r from-orange-500 to-red-400' :
+                    safeHabitabilityScore >= 70 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
+                    safeHabitabilityScore >= 50 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' :
+                    safeHabitabilityScore >= 25 ? 'bg-gradient-to-r from-orange-500 to-red-400' :
                     'bg-gradient-to-r from-red-500 to-red-600'
                   }`}
-                  style={{ width: `${planet.habitabilityScore}%` }}
+                  style={{ width: `${safeHabitabilityScore}%` }}
                 />
               </div>
               
@@ -271,6 +280,10 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                   {planet.inHabitableZone ? 'Within optimal distance for liquid water' : 'Outside the habitable zone'}
                 </p>
                 <div className="mt-2 text-xs text-gray-400">
+                  Based on Kopparapu et al. 2013 calculations
+                </div>
+              </div>
+
               {/* Water Retention */}
               <div className="p-4 bg-gradient-to-br from-cyan-900/20 to-blue-900/20 rounded-lg border border-cyan-500/20">
                 <div className="flex items-center gap-2 mb-3">
@@ -279,21 +292,21 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                 </div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-cyan-300 text-lg font-bold">
-                    {(planet.waterRetentionPotential * 100).toFixed(0)}%
+                    {(safeWaterRetention * 100).toFixed(0)}%
                   </span>
                   <span className="text-xs text-gray-400">Potential</span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
                   <div
                     className="h-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-400"
-                    style={{ width: `${planet.waterRetentionPotential * 100}%` }}
+                    style={{ width: `${safeWaterRetention * 100}%` }}
                   />
                 </div>
                 <p className="text-xs text-gray-400 mt-2">
                   Ability to maintain liquid water on surface
                 </p>
               </div>
-                  Based on Kopparapu et al. 2013 calculations
+
               {/* Surface Conditions */}
               <div className="p-4 bg-gradient-to-br from-orange-900/20 to-red-900/20 rounded-lg border border-orange-500/20">
                 <div className="flex items-center gap-2 mb-3">
@@ -303,18 +316,18 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Gravity:</span>
-                    <span className="text-white">{planet.surfaceGravity.toFixed(2)}g</span>
+                    <span className="text-white">{safeSurfaceGravity.toFixed(2)}g</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Surface Temp:</span>
-                    <span className="text-white">{Math.round(planet.surfaceTemperature - 273.15)}°C</span>
+                    <span className="text-white">{Math.round(safeSurfaceTemperature - 273.15)}°C</span>
                   </div>
                 </div>
                 <p className="text-xs text-gray-400 mt-2">
                   Estimated physical surface conditions
                 </p>
               </div>
-                </div>
+
               {/* Radiation Environment */}
               <div className="p-4 bg-gradient-to-br from-red-900/20 to-pink-900/20 rounded-lg border border-red-500/20">
                 <div className="flex items-center gap-2 mb-3">
@@ -323,14 +336,14 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                 </div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-red-300 text-lg font-bold">
-                    {(planet.radiationHazardIndex * 100).toFixed(0)}%
+                    {(safeRadiationHazard * 100).toFixed(0)}%
                   </span>
                   <span className="text-xs text-gray-400">Risk Level</span>
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
                   <div
                     className="h-2 rounded-full bg-gradient-to-r from-red-500 to-pink-400"
-                    style={{ width: `${planet.radiationHazardIndex * 100}%` }}
+                    style={{ width: `${safeRadiationHazard * 100}%` }}
                   />
                 </div>
                 <p className="text-xs text-gray-400 mt-2">
@@ -338,7 +351,7 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                 </p>
               </div>
             </div>
-              </div>
+
             {/* Scientific Context */}
             <div className="p-4 bg-gray-800/30 rounded-lg border border-gray-600/30">
               <h5 className="font-semibold text-white mb-3 flex items-center gap-2">
