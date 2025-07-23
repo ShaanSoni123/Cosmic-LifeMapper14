@@ -14,46 +14,133 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_FILE_PATH = os.path.join(BASE_DIR, "../src/data/exoplanets.csv")
 
-def load_data_from_csv_file(file_path: str) -> pd.DataFrame:
+def load_exoplanets_from_csv(file_path: str) -> pd.DataFrame:
     """
-    Load exoplanet dataset from a CSV file.
+    Load the comprehensive exoplanet dataset from CSV file (5900+ planets).
 
     Args:
         file_path: Relative or absolute path to the CSV file.
 
     Returns:
-        DataFrame with typed columns.
+        DataFrame with all exoplanet data properly typed.
     """
     try:
+        # Read the CSV file
         df = pd.read_csv(file_path)
-        expected_types = {
-            'planet_name': str,
-            'planet_radius': float,
-            'star_temperature': float,
-            'orbital_distance': float,
-            'atmospheric_pressure': float,
-            'stellar_luminosity': float,
-            'planet_mass': float,
-            'eccentricity': float,
-            'orbital_period': float,
-            'albedo': float,
-            'host_star_metallicity': float,
-            'host_star_age': float
-        }
-
-        # Ensure type enforcement
-        for col, dtype in expected_types.items():
-            df[col] = df[col].astype(dtype)
-
-        logging.info(f"Successfully loaded data from {file_path} with shape {df.shape}")
+        
+        logging.info(f"Successfully loaded {len(df)} exoplanets from {file_path}")
+        logging.info(f"Columns available: {list(df.columns)}")
+        
+        # Clean and standardize column names if needed
+        df.columns = df.columns.str.strip().str.lower()
+        
+        # Handle missing values
+        numeric_columns = df.select_dtypes(include=[np.number]).columns
+        df[numeric_columns] = df[numeric_columns].fillna(df[numeric_columns].median())
+        
+        # Fill string columns with 'Unknown'
+        string_columns = df.select_dtypes(include=['object']).columns
+        df[string_columns] = df[string_columns].fillna('Unknown')
+        
         return df
 
     except Exception as e:
-        logging.error(f"Failed to load CSV file: {e}")
+        logging.error(f"Failed to load CSV file from {file_path}: {e}")
         raise
 
-# Load data at the top-level so it's ready for clustering later
-exoplanet_df = load_data_from_csv_file(CSV_FILE_PATH)
+def convert_to_frontend_format(df: pd.DataFrame) -> List[Dict]:
+    """
+    Convert the pandas DataFrame to the format expected by the frontend.
+    """
+    planets = []
+    
+    for idx, row in df.iterrows():
+        try:
+            # Map CSV columns to frontend format
+            planet = {
+                'id': f"planet-{idx}",
+                'name': str(row.get('name', row.get('planet_name', f'Planet-{idx}'))),
+                'distanceFromEarth': float(row.get('distance', row.get('sy_dist', 100))),
+                'orbitalPeriod': float(row.get('orbital_period', row.get('pl_orbper', 365))),
+                'temperature': float(row.get('temperature', row.get('pl_eqt', row.get('st_teff', 288)))),
+                'starType': str(row.get('star_type', row.get('st_spectype', 'G2V'))),
+                'radius': float(row.get('radius', row.get('pl_rade', 1.0))),
+                'mass': float(row.get('mass', row.get('pl_bmasse', 1.0))),
+                'discoveryYear': int(row.get('discovery_year', row.get('disc_year', 2000))),
+                'discoveryMethod': str(row.get('discovery_method', row.get('discoverymethod', 'Transit'))),
+                'discoveryFacility': str(row.get('discovery_facility', row.get('disc_facility', 'Unknown'))),
+                'constellation': str(row.get('constellation', 'Unknown')),
+                'stellarTemperature': float(row.get('stellar_temperature', row.get('st_teff', 5778))),
+                'orbitalDistance': float(row.get('orbital_distance', row.get('pl_orbsmax', 1.0))),
+            }
+            
+            # Calculate habitability score using our backend function
+            planet['habitabilityScore'] = calculate_habitability_score_for_planet(row)
+            planet['inHabitableZone'] = is_in_habitable_zone(row)
+            
+            planets.append(planet)
+            
+        except Exception as e:
+            logging.warning(f"Error processing planet at index {idx}: {e}")
+            continue
+    
+    return planets
+
+def calculate_habitability_score_for_planet(row) -> int:
+    """Calculate habitability score (0-100) for a single planet from CSV data."""
+    try:
+        # Extract values with fallbacks
+        planet_radius = float(row.get('radius', row.get('pl_rade', 1.0)))
+        star_temp = float(row.get('stellar_temperature', row.get('st_teff', 5778)))
+        orbital_distance = float(row.get('orbital_distance', row.get('pl_orbsmax', 1.0)))
+        planet_mass = float(row.get('mass', row.get('pl_bmasse', 1.0)))
+        planet_temp = float(row.get('temperature', row.get('pl_eqt', 288)))
+        
+        # Use the existing habitability calculation
+        score = calculate_habitability_score(
+            planet_radius=planet_radius,
+            star_temperature=star_temp,
+            orbital_distance=orbital_distance,
+            atmospheric_pressure=1.0,  # Default
+            stellar_luminosity=1.0,    # Default
+            planet_mass=planet_mass,
+            albedo=0.3,               # Default
+            host_star_age=4.6         # Default
+        )
+        
+        return int(score * 100)  # Convert to 0-100 scale
+        
+    except Exception as e:
+        logging.warning(f"Error calculating habitability score: {e}")
+        return 25  # Default moderate score
+
+def is_in_habitable_zone(row) -> bool:
+    """Determine if planet is in habitable zone."""
+    try:
+        temp = float(row.get('temperature', row.get('pl_eqt', 0)))
+        if temp > 0:
+            return 200 <= temp <= 350  # Conservative habitable zone
+        
+        # Fallback: check orbital distance
+        orbital_dist = float(row.get('orbital_distance', row.get('pl_orbsmax', 0)))
+        star_temp = float(row.get('stellar_temperature', row.get('st_teff', 5778)))
+        
+        if orbital_dist > 0 and star_temp > 0:
+            hz_inner, hz_outer = habitable_zone_bounds_extended(star_temp)
+            return hz_inner <= orbital_dist <= hz_outer
+            
+        return False
+        
+    except Exception:
+        return False
+
+# Load data at the top-level so it's ready for processing
+try:
+    exoplanet_df = load_exoplanets_from_csv(CSV_FILE_PATH)
+    logging.info(f"Loaded {len(exoplanet_df)} exoplanets from CSV")
+except Exception as e:
+    logging.error(f"Failed to load exoplanet data: {e}")
+    exoplanet_df = pd.DataFrame()  # Empty DataFrame as fallback
 
     df = df.astype(expected_types)
     logging.info(f"Loaded {len(df)} exoplanet records.")
