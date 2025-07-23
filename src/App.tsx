@@ -4,6 +4,7 @@ import { EnhancedPlanetCard } from './components/EnhancedPlanetCard';
 import { PlanetModal } from './components/PlanetModal';
 import { SearchFilter } from './components/SearchFilter';
 import { UnifiedPlanetGrid } from './components/UnifiedPlanetGrid';
+import { CSVPlanetGrid } from './components/CSVPlanetGrid';
 import { nasaExoplanets, TOTAL_NASA_PLANETS } from './data/nasaExoplanets';
 import { exoplanets } from './data/exoplanets';
 import { csvLoader } from './services/csvLoader';
@@ -12,6 +13,7 @@ import { Telescope, Globe, Zap, Database } from 'lucide-react';
 
 function App() {
   const [selectedPlanet, setSelectedPlanet] = useState<ExtendedExoplanet | null>(null);
+  const [activeTab, setActiveTab] = useState('csv'); // Default to CSV view
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('distance');
   const [filterBy, setFilterBy] = useState('all');
@@ -215,7 +217,7 @@ function App() {
                     smic LifeMapper
                   </h1>
                   <p className="text-gray-300">
-                    Explore {stats.totalPlanets.toLocaleString()}+ exoplanets from multiple sources
+                    Explore 5,900+ exoplanets from comprehensive CSV database
                   </p>
                 </div>
               </div>
@@ -249,16 +251,75 @@ function App() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Unified Exoplanet Section */}
+          {/* Tab Navigation */}
+          <div className="mb-8">
+            <div className="flex justify-center">
+              <div className="bg-white/10 backdrop-blur-md rounded-lg p-1 border border-white/20">
+                <button
+                  onClick={() => setActiveTab('csv')}
+                  className={`px-6 py-3 rounded-lg transition-all duration-300 ${
+                    activeTab === 'csv'
+                      ? 'bg-cyan-600 text-white shadow-lg'
+                      : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Database className="w-4 h-4" />
+                    <span>Complete CSV Database</span>
+                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+                      5,900+
+                    </span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('unified')}
+                  className={`px-6 py-3 rounded-lg transition-all duration-300 ${
+                    activeTab === 'unified'
+                      ? 'bg-cyan-600 text-white shadow-lg'
+                      : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    <span>Unified Collection</span>
+                    <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                      Mixed
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'csv' ? (
+            <div>
+              <div className="mb-8 text-center">
+                <h2 className="text-2xl font-bold text-white mb-4">
+                  Complete CSV Exoplanet Database
+                </h2>
+                <p className="text-gray-300 mb-2">
+                  5,900+ confirmed exoplanets with comprehensive scientific data
+                </p>
+                <p className="text-gray-500 text-sm">
+                  Full dataset with habitability analysis, physical properties, and discovery information
+                </p>
+              </div>
+
+              <CSVPlanetGrid onPlanetSelect={handlePlanetSelect} />
+            </div>
+          ) : (
+            <div>
+              {/* Unified Exoplanet Section */}
           <div className="mb-8 text-center">
             <h2 className="text-2xl font-bold text-white mb-4">
-              Comprehensive Exoplanet Database
+              Unified Exoplanet Collection
             </h2>
             <p className="text-gray-300 mb-2">
               {stats.totalPlanets.toLocaleString()} exoplanets from NASA Archive, CSV database, and curated collection
             </p>
             <p className="text-gray-500 text-sm">
-              Unified dataset with advanced habitability analysis and no duplicates
+              Mixed dataset with advanced habitability analysis and no duplicates
             </p>
           </div>
 
@@ -275,6 +336,8 @@ function App() {
             planets={filteredAndSortedPlanets}
             onPlanetSelect={handlePlanetSelect}
           />
+            </div>
+          )}
 
           {/* Quick Stats Cards for Mobile */}
           <div className="md:hidden mt-8 grid grid-cols-2 gap-4">
