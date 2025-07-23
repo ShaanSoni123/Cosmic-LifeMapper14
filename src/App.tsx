@@ -108,19 +108,22 @@ function App() {
   const removeDuplicatePlanets = (planets: ExtendedExoplanet[]): ExtendedExoplanet[] => {
     const uniquePlanets: ExtendedExoplanet[] = [];
     const seenNames = new Set<string>();
-    console.log(`🔍 Deduplicating ${planets.length} planets...`);
+    
+    console.log(`🔍 Starting deduplication of ${planets.length} planets...`);
+    
     for (const planet of planets) {
       const normalizedName = planet.name.toLowerCase()
         .replace(/\s+/g, '')
         .replace(/-/g, '')
-        .replace(/\./g, '');
+        .replace(/\./g, '')
+        .replace(/'/g, '')
+        .replace(/"/g, '');
       
       // Check if we've seen a similar name
       let isDuplicate = false;
       for (const seenName of seenNames) {
-        if (normalizedName === seenName || 
-            normalizedName.includes(seenName) || 
-            seenName.includes(normalizedName)) {
+        // Only mark as duplicate if names are very similar (not just partial matches)
+        if (normalizedName === seenName) {
           isDuplicate = true;
           break;
         }
@@ -131,7 +134,8 @@ function App() {
         uniquePlanets.push(planet);
       }
     }
-    console.log(`✅ Deduplicated to ${uniquePlanets.length} unique planets`);
+    
+    console.log(`✅ Deduplication complete: ${uniquePlanets.length} unique planets (removed ${planets.length - uniquePlanets.length} duplicates)`);
     return uniquePlanets;
   };
 

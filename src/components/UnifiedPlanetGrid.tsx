@@ -13,7 +13,7 @@ export const UnifiedPlanetGrid: React.FC<UnifiedPlanetGridProps> = ({
   onPlanetSelect 
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const planetsPerPage = 50; // Increased from 20 to show more planets per page
+  const planetsPerPage = 100; // Show 100 planets per page as requested
 
   // Calculate pagination
   const totalPages = Math.ceil(planets.length / planetsPerPage);
