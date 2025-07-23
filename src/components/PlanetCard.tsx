@@ -1,6 +1,7 @@
 import React from 'react';
 import { Thermometer, Clock, Star, Globe, Zap, Calendar, Activity, Droplets } from 'lucide-react';
 import { ExtendedExoplanet } from '../utils/exoplanetAnalysis';
+import { HabitabilityBar } from './HabitabilityBar';
 
 interface PlanetCardProps {
   planet: ExtendedExoplanet;
@@ -73,23 +74,7 @@ export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick }) => {
         </div>
 
         <div className="mt-3 pt-3 border-t border-white/20">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">Habitability</span>
-            <span className={`text-sm font-bold ${getHabitabilityColor(planet.habitabilityScore)}`}>
-              {planet.habitabilityScore.toFixed(1)}/100
-            </span>
-          </div>
-          
-          <div className="mt-1 w-full bg-gray-700 rounded-full h-1.5">
-            <div
-              className={`h-1.5 rounded-full ${
-                planet.habitabilityScore >= 70 ? 'bg-green-400' :
-                planet.habitabilityScore >= 50 ? 'bg-yellow-400' :
-                planet.habitabilityScore >= 25 ? 'bg-orange-400' : 'bg-red-400'
-              }`}
-              style={{ width: `${planet.habitabilityScore}%` }}
-            />
-          </div>
+          <HabitabilityBar score={Math.round(planet.habitabilityScore)} size="medium" />
         </div>
 
         {/* Scientific indicators */}

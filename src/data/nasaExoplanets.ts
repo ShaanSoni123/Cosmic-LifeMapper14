@@ -1,3 +1,5 @@
+import { calculateHabitabilityScore, isInHabitableZone } from '../utils/habitabilityCalculator';
+
 export interface NASAExoplanet {
   id: string;
   name: string;
@@ -17,8 +19,38 @@ export interface NASAExoplanet {
   orbitalDistance: number; // AU
 }
 
+// Function to enhance NASA exoplanet data with habitability scores
+function enhanceWithHabitabilityScores(planets: Omit<NASAExoplanet, 'habitabilityScore' | 'inHabitableZone'>[]): NASAExoplanet[] {
+  return planets.map(planet => {
+    const planetData = {
+      name: planet.name,
+      pl_rade: planet.radius,
+      pl_bmasse: planet.mass,
+      pl_eqt: planet.temperature,
+      st_teff: planet.stellarTemperature,
+      pl_orbsmax: planet.orbitalDistance,
+      st_age: 4.6, // Default star age
+      st_mass: 1.0, // Default star mass
+      st_lum: 1.0, // Default stellar luminosity
+      discoveryYear: planet.discoveryYear,
+      discoveryMethod: planet.discoveryMethod,
+      discoveryFacility: planet.discoveryFacility,
+      constellation: planet.constellation
+    };
+
+    const habitabilityScore = calculateHabitabilityScore(planetData);
+    const inHabitableZone = isInHabitableZone(planetData);
+
+    return {
+      ...planet,
+      habitabilityScore,
+      inHabitableZone
+    };
+  });
+}
+
 // Comprehensive NASA Exoplanet Database - 2000+ planets
-export const nasaExoplanets: NASAExoplanet[] = [
+const rawNasaExoplanets = [
   {
     id: "kepler-138c",
     name: "Kepler-138c",
@@ -32,8 +64,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Kepler Space Telescope",
     constellation: "Lyra",
-    habitabilityScore: 45,
-    inHabitableZone: false,
     stellarTemperature: 3800,
     orbitalDistance: 0.09
   },
@@ -50,8 +80,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Kepler Space Telescope",
     constellation: "Lyra",
-    habitabilityScore: 55,
-    inHabitableZone: true,
     stellarTemperature: 3800,
     orbitalDistance: 0.13
   },
@@ -70,8 +98,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Pictor",
-    habitabilityScore: 30,
-    inHabitableZone: false,
     stellarTemperature: 3386,
     orbitalDistance: 0.029
   },
@@ -88,8 +114,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Pictor",
-    habitabilityScore: 35,
-    inHabitableZone: false,
     stellarTemperature: 3386,
     orbitalDistance: 0.038
   },
@@ -106,8 +130,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Pictor",
-    habitabilityScore: 58,
-    inHabitableZone: true,
     stellarTemperature: 3386,
     orbitalDistance: 0.058
   },
@@ -126,8 +148,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS-N",
     constellation: "Gemini",
-    habitabilityScore: 72,
-    inHabitableZone: true,
     stellarTemperature: 3370,
     orbitalDistance: 0.091
   },
@@ -144,8 +164,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Hydra",
-    habitabilityScore: 28,
-    inHabitableZone: false,
     stellarTemperature: 3505,
     orbitalDistance: 0.035
   },
@@ -162,8 +180,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS",
     constellation: "Hydra",
-    habitabilityScore: 42,
-    inHabitableZone: false,
     stellarTemperature: 3505,
     orbitalDistance: 0.061
   },
@@ -180,8 +196,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS",
     constellation: "Hydra",
-    habitabilityScore: 74,
-    inHabitableZone: true,
     stellarTemperature: 3505,
     orbitalDistance: 0.204
   },
@@ -200,8 +214,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Volans",
-    habitabilityScore: 22,
-    inHabitableZone: false,
     stellarTemperature: 3415,
     orbitalDistance: 0.021
   },
@@ -218,8 +230,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Volans",
-    habitabilityScore: 32,
-    inHabitableZone: false,
     stellarTemperature: 3415,
     orbitalDistance: 0.028
   },
@@ -236,8 +246,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Volans",
-    habitabilityScore: 45,
-    inHabitableZone: false,
     stellarTemperature: 3415,
     orbitalDistance: 0.048
   },
@@ -256,8 +264,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "WASP",
     constellation: "Puppis",
-    habitabilityScore: 2,
-    inHabitableZone: false,
     stellarTemperature: 6460,
     orbitalDistance: 0.025
   },
@@ -274,8 +280,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "HATNet",
     constellation: "Cygnus",
-    habitabilityScore: 1,
-    inHabitableZone: false,
     stellarTemperature: 6350,
     orbitalDistance: 0.037
   },
@@ -292,8 +296,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TrES",
     constellation: "Draco",
-    habitabilityScore: 5,
-    inHabitableZone: false,
     stellarTemperature: 5850,
     orbitalDistance: 0.037
   },
@@ -312,8 +314,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "CoRoT",
     constellation: "Monoceros",
-    habitabilityScore: 3,
-    inHabitableZone: false,
     stellarTemperature: 5275,
     orbitalDistance: 0.017
   },
@@ -330,8 +330,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "CoRoT",
     constellation: "Serpens",
-    habitabilityScore: 45,
-    inHabitableZone: false,
     stellarTemperature: 5625,
     orbitalDistance: 0.407
   },
@@ -350,8 +348,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Ground-based",
     constellation: "Pegasus",
-    habitabilityScore: 8,
-    inHabitableZone: false,
     stellarTemperature: 6065,
     orbitalDistance: 0.047
   },
@@ -368,8 +364,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Ground-based",
     constellation: "Vulpecula",
-    habitabilityScore: 6,
-    inHabitableZone: false,
     stellarTemperature: 5040,
     orbitalDistance: 0.031
   },
@@ -388,8 +382,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "Lick Observatory",
     constellation: "Cancer",
-    habitabilityScore: 2,
-    inHabitableZone: false,
     stellarTemperature: 5196,
     orbitalDistance: 0.0156
   },
@@ -406,8 +398,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "Lick Observatory",
     constellation: "Cancer",
-    habitabilityScore: 25,
-    inHabitableZone: false,
     stellarTemperature: 5196,
     orbitalDistance: 0.781
   },
@@ -426,8 +416,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "Lick Observatory",
     constellation: "Andromeda",
-    habitabilityScore: 5,
-    inHabitableZone: false,
     stellarTemperature: 6213,
     orbitalDistance: 0.059
   },
@@ -444,8 +432,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "Lick Observatory",
     constellation: "Andromeda",
-    habitabilityScore: 52,
-    inHabitableZone: true,
     stellarTemperature: 6213,
     orbitalDistance: 0.83
   },
@@ -464,8 +450,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "Lick Observatory",
     constellation: "Ursa Major",
-    habitabilityScore: 35,
-    inHabitableZone: false,
     stellarTemperature: 5882,
     orbitalDistance: 2.1
   },
@@ -482,8 +466,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "McDonald Observatory",
     constellation: "Ursa Major",
-    habitabilityScore: 20,
-    inHabitableZone: false,
     stellarTemperature: 5882,
     orbitalDistance: 3.73
   },
@@ -502,8 +484,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Vela",
-    habitabilityScore: 48,
-    inHabitableZone: true,
     stellarTemperature: 3300,
     orbitalDistance: 0.13
   },
@@ -520,8 +500,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Hercules",
-    habitabilityScore: 1,
-    inHabitableZone: false,
     stellarTemperature: 6500,
     orbitalDistance: 0.017
   },
@@ -540,8 +518,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "K2 Mission",
     constellation: "Scorpius",
-    habitabilityScore: 12,
-    inHabitableZone: false,
     stellarTemperature: 3900,
     orbitalDistance: 0.054
   },
@@ -558,8 +534,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "K2 Mission",
     constellation: "Aquarius",
-    habitabilityScore: 64,
-    inHabitableZone: true,
     stellarTemperature: 3497,
     orbitalDistance: 0.106
   },
@@ -578,8 +552,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "WASP",
     constellation: "Phoenix",
-    habitabilityScore: 8,
-    inHabitableZone: false,
     stellarTemperature: 5540,
     orbitalDistance: 0.045
   },
@@ -596,8 +568,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "WASP",
     constellation: "Virgo",
-    habitabilityScore: 10,
-    inHabitableZone: false,
     stellarTemperature: 5400,
     orbitalDistance: 0.0486
   },
@@ -616,8 +586,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Kepler Space Telescope",
     constellation: "Lyra",
-    habitabilityScore: 75,
-    inHabitableZone: true,
     stellarTemperature: 4402,
     orbitalDistance: 0.409
   },
@@ -634,8 +602,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Kepler Space Telescope",
     constellation: "Draco",
-    habitabilityScore: 68,
-    inHabitableZone: true,
     stellarTemperature: 3740,
     orbitalDistance: 0.169
   },
@@ -652,8 +618,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Kepler Space Telescope",
     constellation: "Cygnus",
-    habitabilityScore: 63,
-    inHabitableZone: true,
     stellarTemperature: 4750,
     orbitalDistance: 0.32
   },
@@ -672,8 +636,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS",
     constellation: "Pictor",
-    habitabilityScore: 58,
-    inHabitableZone: true,
     stellarTemperature: 3570,
     orbitalDistance: 0.168
   },
@@ -690,8 +652,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS",
     constellation: "Ophiuchus",
-    habitabilityScore: 35,
-    inHabitableZone: false,
     stellarTemperature: 3134,
     orbitalDistance: 0.4
   },
@@ -710,8 +670,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Volans",
-    habitabilityScore: 62,
-    inHabitableZone: true,
     stellarTemperature: 3200,
     orbitalDistance: 0.092
   },
@@ -728,8 +686,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Ursa Major",
-    habitabilityScore: 38,
-    inHabitableZone: false,
     stellarTemperature: 3127,
     orbitalDistance: 0.074
   },
@@ -748,8 +704,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "Keck Observatory",
     constellation: "Aquarius",
-    habitabilityScore: 18,
-    inHabitableZone: false,
     stellarTemperature: 3176,
     orbitalDistance: 0.021
   },
@@ -766,8 +720,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS",
     constellation: "Dorado",
-    habitabilityScore: 66,
-    inHabitableZone: true,
     stellarTemperature: 3500,
     orbitalDistance: 0.125
   },
@@ -786,8 +738,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS",
     constellation: "Hercules",
-    habitabilityScore: 45,
-    inHabitableZone: true,
     stellarTemperature: 5500,
     orbitalDistance: 0.23
   },
@@ -804,8 +754,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS",
     constellation: "Fornax",
-    habitabilityScore: 67,
-    inHabitableZone: true,
     stellarTemperature: 5401,
     orbitalDistance: 0.35
   },
@@ -824,8 +772,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "CARMENES",
     constellation: "Cygnus",
-    habitabilityScore: 76,
-    inHabitableZone: true,
     stellarTemperature: 3141,
     orbitalDistance: 0.067
   },
@@ -844,8 +790,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Kepler Space Telescope",
     constellation: "Cygnus",
-    habitabilityScore: 25,
-    inHabitableZone: true,
     stellarTemperature: 5500,
     orbitalDistance: 1.6
   },
@@ -864,8 +808,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Eridanus",
-    habitabilityScore: 35,
-    inHabitableZone: false,
     stellarTemperature: 2850,
     orbitalDistance: 0.018
   },
@@ -882,8 +824,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "SPECULOOS",
     constellation: "Eridanus",
-    habitabilityScore: 68,
-    inHabitableZone: true,
     stellarTemperature: 2850,
     orbitalDistance: 0.04
   },
@@ -902,8 +842,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Draco",
-    habitabilityScore: 30,
-    inHabitableZone: false,
     stellarTemperature: 5862,
     orbitalDistance: 0.82
   },
@@ -920,8 +858,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Hercules",
-    habitabilityScore: 12,
-    inHabitableZone: false,
     stellarTemperature: 6500,
     orbitalDistance: 0.08
   },
@@ -940,8 +876,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Microscopium",
-    habitabilityScore: 25,
-    inHabitableZone: false,
     stellarTemperature: 3700,
     orbitalDistance: 0.066
   },
@@ -958,8 +892,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Microscopium",
-    habitabilityScore: 42,
-    inHabitableZone: false,
     stellarTemperature: 3700,
     orbitalDistance: 0.11
   },
@@ -978,8 +910,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Kepler Space Telescope",
     constellation: "Cygnus",
-    habitabilityScore: 69,
-    inHabitableZone: true,
     stellarTemperature: 5777,
     orbitalDistance: 0.58
   },
@@ -996,8 +926,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Kepler Space Telescope",
     constellation: "Cygnus",
-    habitabilityScore: 71,
-    inHabitableZone: true,
     stellarTemperature: 4540,
     orbitalDistance: 0.18
   },
@@ -1016,8 +944,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Draco",
-    habitabilityScore: 28,
-    inHabitableZone: false,
     stellarTemperature: 3600,
     orbitalDistance: 0.025
   },
@@ -1034,8 +960,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Cygnus",
-    habitabilityScore: 32,
-    inHabitableZone: false,
     stellarTemperature: 3800,
     orbitalDistance: 0.032
   },
@@ -1054,8 +978,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "MEarth",
     constellation: "Crater",
-    habitabilityScore: 18,
-    inHabitableZone: false,
     stellarTemperature: 3600,
     orbitalDistance: 0.04
   },
@@ -1074,8 +996,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Mensa",
-    habitabilityScore: 32,
-    inHabitableZone: false,
     stellarTemperature: 6000,
     orbitalDistance: 0.067
   },
@@ -1092,8 +1012,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Aquarius",
-    habitabilityScore: 8,
-    inHabitableZone: false,
     stellarTemperature: 7500,
     orbitalDistance: 0.048
   },
@@ -1112,8 +1030,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "K2 Mission",
     constellation: "Aquarius",
-    habitabilityScore: 22,
-    inHabitableZone: false,
     stellarTemperature: 4900,
     orbitalDistance: 0.026
   },
@@ -1130,8 +1046,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "K2 Mission",
     constellation: "Aquarius",
-    habitabilityScore: 28,
-    inHabitableZone: false,
     stellarTemperature: 4900,
     orbitalDistance: 0.032
   },
@@ -1150,8 +1064,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Coma Berenices",
-    habitabilityScore: 35,
-    inHabitableZone: false,
     stellarTemperature: 4900,
     orbitalDistance: 0.082
   },
@@ -1168,8 +1080,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Coma Berenices",
-    habitabilityScore: 42,
-    inHabitableZone: false,
     stellarTemperature: 4900,
     orbitalDistance: 0.105
   },
@@ -1188,8 +1098,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "WASP",
     constellation: "Scorpius",
-    habitabilityScore: 4,
-    inHabitableZone: false,
     stellarTemperature: 6650,
     orbitalDistance: 0.052
   },
@@ -1206,8 +1114,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "WASP",
     constellation: "Auriga",
-    habitabilityScore: 2,
-    inHabitableZone: false,
     stellarTemperature: 6300,
     orbitalDistance: 0.023
   },
@@ -1226,8 +1132,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "HATNet",
     constellation: "Cygnus",
-    habitabilityScore: 15,
-    inHabitableZone: false,
     stellarTemperature: 4780,
     orbitalDistance: 0.053
   },
@@ -1244,8 +1148,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "HATNet",
     constellation: "Virgo",
-    habitabilityScore: 12,
-    inHabitableZone: false,
     stellarTemperature: 5079,
     orbitalDistance: 0.048
   },
@@ -1264,8 +1166,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Lynx",
-    habitabilityScore: 48,
-    inHabitableZone: true,
     stellarTemperature: 3800,
     orbitalDistance: 0.067
   },
@@ -1282,8 +1182,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Draco",
-    habitabilityScore: 72,
-    inHabitableZone: true,
     stellarTemperature: 3600,
     orbitalDistance: 0.26
   },
@@ -1302,8 +1200,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Spitzer Space Telescope",
     constellation: "Cassiopeia",
-    habitabilityScore: 15,
-    inHabitableZone: false,
     stellarTemperature: 4699,
     orbitalDistance: 0.065
   },
@@ -1320,8 +1216,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS-N",
     constellation: "Cassiopeia",
-    habitabilityScore: 35,
-    inHabitableZone: false,
     stellarTemperature: 4699,
     orbitalDistance: 0.237
   },
@@ -1340,8 +1234,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Qatar Exoplanet Survey",
     constellation: "Draco",
-    habitabilityScore: 6,
-    inHabitableZone: false,
     stellarTemperature: 4910,
     orbitalDistance: 0.023
   },
@@ -1358,8 +1250,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Qatar Exoplanet Survey",
     constellation: "Aquarius",
-    habitabilityScore: 5,
-    inHabitableZone: false,
     stellarTemperature: 4645,
     orbitalDistance: 0.022
   },
@@ -1378,8 +1268,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "XO Project",
     constellation: "Corona Borealis",
-    habitabilityScore: 8,
-    inHabitableZone: false,
     stellarTemperature: 5750,
     orbitalDistance: 0.049
   },
@@ -1396,8 +1284,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "XO Project",
     constellation: "Lynx",
-    habitabilityScore: 7,
-    inHabitableZone: false,
     stellarTemperature: 5340,
     orbitalDistance: 0.037
   },
@@ -1416,8 +1302,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Hydra",
-    habitabilityScore: 68,
-    inHabitableZone: true,
     stellarTemperature: 3400,
     orbitalDistance: 0.137
   },
@@ -1434,8 +1318,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Draco",
-    habitabilityScore: 28,
-    inHabitableZone: false,
     stellarTemperature: 3200,
     orbitalDistance: 0.023
   },
@@ -1454,8 +1336,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Kepler Space Telescope",
     constellation: "Cygnus",
-    habitabilityScore: 38,
-    inHabitableZone: false,
     stellarTemperature: 6200,
     orbitalDistance: 0.078
   },
@@ -1472,8 +1352,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "Kepler Space Telescope",
     constellation: "Cygnus",
-    habitabilityScore: 58,
-    inHabitableZone: true,
     stellarTemperature: 5400,
     orbitalDistance: 0.28
   },
@@ -1492,8 +1370,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "NGTS",
     constellation: "Columba",
-    habitabilityScore: 12,
-    inHabitableZone: false,
     stellarTemperature: 3916,
     orbitalDistance: 0.032
   },
@@ -1510,8 +1386,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "NGTS",
     constellation: "Crater",
-    habitabilityScore: 4,
-    inHabitableZone: false,
     stellarTemperature: 5050,
     orbitalDistance: 0.019
   },
@@ -1530,8 +1404,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Direct Imaging",
     discoveryFacility: "Keck Observatory",
     constellation: "Pegasus",
-    habitabilityScore: 15,
-    inHabitableZone: false,
     stellarTemperature: 7430,
     orbitalDistance: 68
   },
@@ -1548,8 +1420,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Direct Imaging",
     discoveryFacility: "Keck Observatory",
     constellation: "Pegasus",
-    habitabilityScore: 12,
-    inHabitableZone: false,
     stellarTemperature: 7430,
     orbitalDistance: 38
   },
@@ -1568,8 +1438,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Direct Imaging",
     discoveryFacility: "VLT",
     constellation: "Pictor",
-    habitabilityScore: 8,
-    inHabitableZone: false,
     stellarTemperature: 8052,
     orbitalDistance: 9.2
   },
@@ -1586,8 +1454,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS",
     constellation: "Pictor",
-    habitabilityScore: 35,
-    inHabitableZone: false,
     stellarTemperature: 8052,
     orbitalDistance: 2.7
   },
@@ -1606,8 +1472,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "K2 Mission",
     constellation: "Pisces",
-    habitabilityScore: 25,
-    inHabitableZone: false,
     stellarTemperature: 3200,
     orbitalDistance: 0.025
   },
@@ -1626,8 +1490,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Ursa Major",
-    habitabilityScore: 45,
-    inHabitableZone: false,
     stellarTemperature: 3127,
     orbitalDistance: 0.063
   },
@@ -1646,8 +1508,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Radial Velocity",
     discoveryFacility: "HARPS",
     constellation: "Lupus",
-    habitabilityScore: 18,
-    inHabitableZone: false,
     stellarTemperature: 5664,
     orbitalDistance: 0.107
   },
@@ -1664,8 +1524,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Lupus",
-    habitabilityScore: 32,
-    inHabitableZone: false,
     stellarTemperature: 5664,
     orbitalDistance: 0.186
   },
@@ -1682,8 +1540,6 @@ export const nasaExoplanets: NASAExoplanet[] = [
     discoveryMethod: "Transit",
     discoveryFacility: "TESS",
     constellation: "Lupus",
-    habitabilityScore: 58,
-    inHabitableZone: true,
     stellarTemperature: 5664,
     orbitalDistance: 0.496
   }
@@ -1699,6 +1555,8 @@ export const nasaExoplanets: NASAExoplanet[] = [
   // - Recent discoveries from 2023-2024
 ];
 
+// Calculate habitability scores for all planets
+export const nasaExoplanets: NASAExoplanet[] = enhanceWithHabitabilityScores(rawNasaExoplanets);
 // Helper function to get star type from temperature
 export function getStarTypeFromTemp(temp: number): string {
   if (temp > 30000) return 'O';

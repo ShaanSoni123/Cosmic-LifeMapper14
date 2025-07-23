@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { StarField } from './components/StarField';
 import { PlanetCard } from './components/PlanetCard';
+import { EnhancedPlanetCard } from './components/EnhancedPlanetCard';
 import { PlanetModal } from './components/PlanetModal';
 import { SearchFilter } from './components/SearchFilter';
 import { PlanetSearch } from './components/PlanetSearch';
@@ -313,9 +314,26 @@ function App() {
               {paginatedPlanets.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {paginatedPlanets.map((planet) => (
-                    <PlanetCard
+                    <EnhancedPlanetCard
                       key={planet.id}
-                      planet={planet}
+                      planet={{
+                        id: planet.id,
+                        name: planet.name,
+                        distanceFromEarth: planet.distanceFromEarth,
+                        orbitalPeriod: planet.orbitalPeriod,
+                        temperature: planet.temperature,
+                        starType: planet.starType,
+                        radius: planet.radius,
+                        mass: planet.mass,
+                        discoveryYear: planet.discoveryYear,
+                        discoveryMethod: planet.biosignatures.length > 0 ? 'Spectroscopy' : 'Transit',
+                        discoveryFacility: 'Various',
+                        constellation: planet.constellation,
+                        habitabilityScore: Math.round(planet.habitabilityScore),
+                        inHabitableZone: planet.inHabitableZone,
+                        stellarTemperature: planet.temperature,
+                        orbitalDistance: planet.orbitalPeriod / 365.25
+                      }}
                       onClick={() => setSelectedPlanet(planet)}
                     />
                   ))}

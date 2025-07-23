@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, ChevronLeft, ChevronRight, Database, Globe, Zap, Search, Calendar, Telescope, Star, Thermometer, Weight, Ruler, Clock, Target, Activity, Droplets, Shield } from 'lucide-react';
 import { nasaExoplanets, NASAExoplanet } from '../data/nasaExoplanets';
+import { HabitabilityBar } from './HabitabilityBar';
 
 interface DirectNASAPlanetGridProps {
   onPlanetSelect: (planetName: string) => void;
@@ -133,23 +134,7 @@ export const DirectNASAPlanetGrid: React.FC<DirectNASAPlanetGridProps> = ({ onPl
 
           {/* Habitability Score */}
           <div className="pt-3 border-t border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-gray-400">Habitability</span>
-              <span className={`text-sm font-bold ${getHabitabilityColor(habitabilityScore)}`}>
-                {habitabilityScore}/100
-              </span>
-            </div>
-            
-            <div className="w-full bg-gray-700 rounded-full h-1.5">
-              <div
-                className={`h-1.5 rounded-full ${
-                  habitabilityScore >= 70 ? 'bg-green-400' :
-                  habitabilityScore >= 50 ? 'bg-yellow-400' :
-                  habitabilityScore >= 25 ? 'bg-orange-400' : 'bg-red-400'
-                }`}
-                style={{ width: `${habitabilityScore}%` }}
-              />
-            </div>
+            <HabitabilityBar score={habitabilityScore} size="medium" />
           </div>
 
           {/* Special Indicators */}
