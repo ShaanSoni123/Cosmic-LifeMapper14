@@ -22,6 +22,8 @@ function App() {
   const [nasaStats, setNasaStats] = useState({ total_planets: TOTAL_NASA_PLANETS });
   const [csvLoaded, setCsvLoaded] = useState(false);
   const [csvPlanets, setCsvPlanets] = useState<ExtendedExoplanet[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const planetsPerPage = 100;
 
   // Load CSV data on component mount
   React.useEffect(() => {
@@ -142,6 +144,17 @@ function App() {
 
     return filtered;
   }, [processedPlanets, searchTerm, sortBy, filterBy]);
+
+  // Calculate pagination for curated view
+  const totalPages = Math.ceil(filteredAndSortedPlanets.length / planetsPerPage);
+  const startIndex = (currentPage - 1) * planetsPerPage;
+  const endIndex = startIndex + planetsPerPage;
+  const paginatedPlanets = filteredAndSortedPlanets.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search/filter changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterBy, sortBy]);
 
   const stats = useMemo(() => {
     const totalPlanets = processedPlanets.length;
@@ -290,13 +303,16 @@ function App() {
 
               <div className="mb-6">
                 <p className="text-gray-300">
-                  Showing {filteredAndSortedPlanets.length} of {processedPlanets.length} {csvLoaded ? 'CSV' : 'curated'} exoplanets
+                  Showing {paginatedPlanets.length} of {filteredAndSortedPlanets.length} {csvLoaded ? 'CSV' : 'curated'} exoplanets
+                  {totalPages > 1 && (
+                    <span className="text-gray-400"> • Page {currentPage} of {totalPages}</span>
+                  )}
                 </p>
               </div>
 
-              {filteredAndSortedPlanets.length > 0 ? (
+              {paginatedPlanets.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredAndSortedPlanets.map((planet) => (
+                  {paginatedPlanets.map((planet) => (
                     <PlanetCard
                       key={planet.id}
                       planet={planet}
@@ -304,11 +320,90 @@ function App() {
                     />
                   ))}
                 </div>
-              ) : (
+              ) : filteredAndSortedPlanets.length === 0 ? (
                 <div className="text-center">
                   <Globe className="w-16 h-16 text-gray-500 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-300 mb-2">No planets found</h3>
                   <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-gray-300">Loading more planets...</p>
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-8 flex items-center justify-center gap-4">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/20 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {/* Show first page */}
+                    {currentPage > 3 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentPage(1)}
+                          className="px-3 py-2 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 transition-colors"
+                        >
+                          1
+                        </button>
+                        {currentPage > 4 && <span className="text-gray-500">...</span>}
+                      </>
+                    )}
+
+                    {/* Show pages around current page */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                      if (page > totalPages) return null;
+                      
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-2 rounded-lg transition-colors ${
+                            page === currentPage
+                              ? 'bg-cyan-600 text-white'
+                              : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+
+                    {/* Show last page */}
+                    {currentPage < totalPages - 2 && (
+                      <>
+                        {currentPage < totalPages - 3 && <span className="text-gray-500">...</span>}
+                        <button
+                          onClick={() => setCurrentPage(totalPages)}
+                          className="px-3 py-2 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 transition-colors"
+                        >
+                          {totalPages}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/20 transition-colors"
+                  >
+                    Next
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 </div>
               )}
             </>
