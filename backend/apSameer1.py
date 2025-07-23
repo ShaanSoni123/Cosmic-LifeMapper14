@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # Path setup for reading the CSV relative to the script location
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_FILE_PATH = os.path.join(BASE_DIR, "../src/data/exoplanets.csv")
+CSV_FILE_PATH = os.path.join(BASE_DIR, "exoplanets.csv")
 
 def load_exoplanets_from_csv(file_path: str) -> pd.DataFrame:
     """
@@ -141,10 +141,6 @@ try:
 except Exception as e:
     logging.error(f"Failed to load exoplanet data: {e}")
     exoplanet_df = pd.DataFrame()  # Empty DataFrame as fallback
-
-    df = df.astype(expected_types)
-    logging.info(f"Loaded {len(df)} exoplanet records.")
-    return df
 
 def habitable_zone_bounds_extended(star_temp: float) -> Tuple[float, float]:
     """
@@ -362,7 +358,7 @@ def cluster_planets(
 
     logging.info(f"Performed clustering into {n_clusters} groups.")
 
-    return data_clustered, kmeans_model, pca_model
+    return data_clustered, kmeans, pca
 
 def interpret_cluster(cluster_label: int) -> str:
     """
@@ -482,7 +478,7 @@ def main():
     logging.info("Starting exoplanet habitability backend processing...")
 
     # Load dataset
-    df = load_data_from_csv_string(CSV_DATA)
+    df = load_exoplanets_from_csv(CSV_FILE_PATH)
 
     # Process habitability scores and clustering
     df_processed = process_and_cluster_dataset(df)
