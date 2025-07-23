@@ -23,19 +23,13 @@ function App() {
   React.useEffect(() => {
     const loadAllPlanetData = async () => {
       try {
-        console.log('🚀 Loading all planet data sources...');
-        
         // Load CSV data
-        console.log('📊 Loading CSV data with 5900+ planets...');
         await csvLoader.loadCSVData();
         const csvPlanets = csvLoader.getPlanets();
-        console.log(`✅ Loaded ${csvPlanets.length} planets from CSV!`);
-        
         const processedCsvPlanets = clusterPlanets(csvPlanets);
-        setCsvPlanets(processedCsvPlanets);
+        setCsvPlanets(processedPlanets);
         setCsvLoaded(true);
         
-        console.log('🌌 Processing NASA exoplanets...');
         // Convert NASA exoplanets to ExtendedExoplanet format
         const nasaPlanets: ExtendedExoplanet[] = nasaExoplanets.map(planet => ({
           id: planet.id,
@@ -59,7 +53,6 @@ function App() {
           inHabitableZone: planet.inHabitableZone
         }));
         
-        console.log('🔬 Processing curated exoplanets...');
         // Merge all planets and remove duplicates
         const mergedPlanets = [...processedCsvPlanets, ...nasaPlanets, ...clusterPlanets(exoplanets)];
         const uniquePlanets = removeDuplicatePlanets(mergedPlanets);
@@ -68,10 +61,8 @@ function App() {
         console.log(`Merged and deduplicated ${uniquePlanets.length} total planets`);
       } catch (error) {
         console.error('Failed to load planet data:', error);
-        console.log('⚠️ Falling back to NASA + curated exoplanets only');
-        
+        // Fallback to NASA + curated exoplanets only
         const nasaPlanets: ExtendedExoplanet[] = nasaExoplanets.map(planet => ({
-          // ... (same mapping as above)
           id: planet.id,
           name: planet.name,
           distanceFromEarth: planet.distanceFromEarth,
@@ -95,7 +86,6 @@ function App() {
         
         const mergedPlanets = [...nasaPlanets, ...clusterPlanets(exoplanets)];
         const uniquePlanets = removeDuplicatePlanets(mergedPlanets);
-        console.log(`Fallback: Using ${uniquePlanets.length} planets (NASA + curated only)`);
         setAllPlanets(uniquePlanets);
         setCsvLoaded(true);
       }
@@ -109,21 +99,18 @@ function App() {
     const uniquePlanets: ExtendedExoplanet[] = [];
     const seenNames = new Set<string>();
     
-    console.log(`🔍 Starting deduplication of ${planets.length} planets...`);
-    
     for (const planet of planets) {
       const normalizedName = planet.name.toLowerCase()
         .replace(/\s+/g, '')
         .replace(/-/g, '')
-        .replace(/\./g, '')
-        .replace(/'/g, '')
-        .replace(/"/g, '');
+        .replace(/\./g, '');
       
       // Check if we've seen a similar name
       let isDuplicate = false;
       for (const seenName of seenNames) {
-        // Only mark as duplicate if names are very similar (not just partial matches)
-        if (normalizedName === seenName) {
+        if (normalizedName === seenName || 
+            normalizedName.includes(seenName) || 
+            seenName.includes(normalizedName)) {
           isDuplicate = true;
           break;
         }
@@ -135,7 +122,6 @@ function App() {
       }
     }
     
-    console.log(`✅ Deduplication complete: ${uniquePlanets.length} unique planets (removed ${planets.length - uniquePlanets.length} duplicates)`);
     return uniquePlanets;
   };
 
