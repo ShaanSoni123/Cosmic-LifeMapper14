@@ -10,5 +10,3 @@ export function setCsvExoplanets(planets: Exoplanet[]) {
 
 // Export count
 export const TOTAL_CSV_PLANETS = () => csvExoplanets.length;
-
-export { csvExoplanets }
