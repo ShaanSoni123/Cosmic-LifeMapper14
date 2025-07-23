@@ -23,21 +23,43 @@ export class CSVExoplanetLoader {
     }
 
     try {
-      // Try to load from backend first
-      const response = await fetch('/backend/exoplanets.csv');
+      // Try to load from multiple possible locations
+      let response = await fetch('/backend/exoplanets.csv');
+      if (!response.ok) {
+        response = await fetch('/public/backend/exoplanets.csv');
+      }
+      if (!response.ok) {
+        response = await fetch('./backend/exoplanets.csv');
+      }
+      
       if (response.ok) {
         const csvText = await response.text();
         this.planets = this.parseCSV(csvText);
         this.loaded = true;
         setCsvExoplanets(this.planets);
+        console.log(`✅ Successfully loaded ${this.planets.length} planets from CSV!`);
         return this.planets;
       }
     } catch (error) {
       console.warn('Could not load CSV from backend:', error);
     }
 
-    // Fallback: return empty array if CSV can't be loaded
-    console.warn('CSV file not accessible, using empty dataset');
+    // Fallback: try to load from public directory
+    try {
+      const response = await fetch('/public/backend/exoplanets.csv');
+      if (response.ok) {
+        const csvText = await response.text();
+        this.planets = this.parseCSV(csvText);
+        this.loaded = true;
+        setCsvExoplanets(this.planets);
+        console.log(`✅ Successfully loaded ${this.planets.length} planets from public CSV!`);
+        return this.planets;
+      }
+    } catch (error) {
+      console.warn('Could not load CSV from public directory:', error);
+    }
+
+    console.warn('CSV file not accessible from any location, using empty dataset');
     return [];
   }
 
