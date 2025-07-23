@@ -1,5 +1,5 @@
 import { Exoplanet } from '../data/exoplanets';
-import { setCsvExoplanets } from '../data/csvExoplanets';
+import { setCsvExoplanets } from 'backend/exoplanets.csv';
 
 interface CSVRow {
   [key: string]: string;
