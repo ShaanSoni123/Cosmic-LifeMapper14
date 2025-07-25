@@ -3,15 +3,16 @@ import { StarField } from './components/StarField';
 import { PlanetModal } from './components/PlanetModal';
 import { AllCSVPlanets } from './components/AllCSVPlanets';
 import { PlanetComparison } from './components/PlanetComparison';
+import { CreateExoplanet } from './components/CreateExoplanet';
 import { ExtendedExoplanet } from './utils/exoplanetAnalysis';
-import { Telescope, Globe, Zap, Database, GitCompare } from 'lucide-react';
+import { Telescope, Globe, Zap, Database, GitCompare, Plus } from 'lucide-react';
 import { csvLoader } from './services/csvLoader';
 
 function App() {
   const [selectedPlanet, setSelectedPlanet] = useState<ExtendedExoplanet | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [allPlanets, setAllPlanets] = useState<ExtendedExoplanet[]>([]);
-  const [activeTab, setActiveTab] = useState<'explore' | 'compare'>('explore');
+  const [activeTab, setActiveTab] = useState<'explore' | 'compare' | 'create'>('explore');
 
   // Load planets for comparison
   React.useEffect(() => {
@@ -101,6 +102,18 @@ function App() {
                   <GitCompare className="w-5 h-5" />
                   <span className="font-medium">Compare Worlds</span>
                 </button>
+                
+                <button
+                  onClick={() => setActiveTab('create')}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${
+                    activeTab === 'create'
+                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg'
+                      : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                  }`}
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="font-medium">Create World</span>
+                </button>
               </div>
             </div>
           </div>
@@ -110,7 +123,7 @@ function App() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {activeTab === 'explore' ? (
             <AllCSVPlanets onPlanetSelect={handlePlanetSelect} />
-          ) : (
+          ) : activeTab === 'compare' ? (
             <div className="text-center py-12">
               <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
                 <GitCompare className="w-12 h-12 text-white" />
@@ -127,6 +140,8 @@ function App() {
                 Start Comparison
               </button>
             </div>
+          ) : (
+            <CreateExoplanet />
           )}
         </main>
 
