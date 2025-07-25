@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Globe, Clock, Thermometer, Star, Zap, Calendar, Weight, Ruler, Activity, Droplets, Shield, Target, Info } from 'lucide-react';
 import { ExtendedExoplanet, generateDetailedReport } from '../utils/exoplanetAnalysis';
+import { BiosignaturePanel } from './BiosignaturePanel';
 
 interface PlanetModalProps {
   planet: ExtendedExoplanet;
@@ -9,6 +10,8 @@ interface PlanetModalProps {
 }
 
 export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClose }) => {
+  const [activeTab, setActiveTab] = React.useState<'overview' | 'biosignatures'>('overview');
+
   if (!isOpen) return null;
 
   // Ensure we have valid data for display
@@ -92,7 +95,37 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
         </div>
 
         {/* Content */}
-        <div className="p-6 grid md:grid-cols-2 gap-6">
+        <div className="p-6">
+          {/* Tab Navigation */}
+          <div className="flex items-center gap-2 mb-6">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${
+                activeTab === 'overview'
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              }`}
+            >
+              <Globe className="w-5 h-5" />
+              <span className="font-medium">Planet Overview</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('biosignatures')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${
+                activeTab === 'biosignatures'
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg'
+                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+              }`}
+            >
+              <Zap className="w-5 h-5" />
+              <span className="font-medium">Biosignature Analysis</span>
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'overview' ? (
+            <div className="grid md:grid-cols-2 gap-6">
           {/* Physical Properties */}
           <div className="space-y-4">
             <h3 className="text-xl font-bold text-white mb-4">Physical Properties</h3>
@@ -383,6 +416,20 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
               </div>
             </div>
           </div>
+            </div>
+          ) : (
+            <BiosignaturePanel 
+              planet={{
+                temperature: planet.temperature,
+                radius: planet.radius,
+                mass: planet.mass,
+                starType: planet.starType,
+                inHabitableZone: planet.inHabitableZone,
+                habitabilityScore: planet.habitabilityScore,
+                name: planet.name
+              }}
+            />
+          )}
         </div>
       </div>
     </div>
