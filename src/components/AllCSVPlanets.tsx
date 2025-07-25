@@ -311,10 +311,10 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
       <div className="mb-8 text-center">
         <h1 className="text-4xl font-bold text-white mb-4 flex items-center justify-center gap-3">
           <Database className="w-10 h-10 text-cyan-400" />
-          ALL CSV Exoplanets Database
+          Outer planets
         </h1>
         <p className="text-xl text-gray-300 mb-2">
-          🎉 Successfully loaded <span className="text-cyan-400 font-bold">{allPlanets.length.toLocaleString()}</span> exoplanets from backend/exoplanets.csv
+          🎉 Successfully loaded <span className="text-cyan-400 font-bold">{allPlanets.length.toLocaleString()}</span> exoplanets
         </p>
         <p className="text-gray-500">
           Complete dataset with advanced habitability analysis and comprehensive planetary data

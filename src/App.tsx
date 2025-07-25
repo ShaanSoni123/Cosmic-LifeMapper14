@@ -71,9 +71,6 @@ function App() {
                     </div>
                     smic LifeMapper
                   </h1>
-                  <p className="text-gray-300">
-                    ALL 5900+ Exoplanets from backend/exoplanets.csv
-                  </p>
                 </div>
               </div>
               
