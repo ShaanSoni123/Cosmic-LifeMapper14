@@ -313,12 +313,6 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
           <Database className="w-10 h-10 text-cyan-400" />
           Outer planets
         </h1>
-        <p className="text-xl text-gray-300 mb-2">
-          🎉 Successfully loaded <span className="text-cyan-400 font-bold">{allPlanets.length.toLocaleString()}</span> exoplanets
-        </p>
-        <p className="text-gray-500">
-          Complete dataset with advanced habitability analysis and comprehensive planetary data
-        </p>
       </div>
 
       {/* Controls */}
@@ -329,7 +323,7 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder={`Search from ${allPlanets.length.toLocaleString()} CSV exoplanets by name, constellation, or star type...`}
+              placeholder="Let's go through some planets"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent text-lg"
