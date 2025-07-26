@@ -421,7 +421,7 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
           )}
         </p>
         <p className="text-gray-500 text-sm">
-          Page {currentPage.toLocaleString()} of {totalPages.toLocaleString()} • Source: backend/exoplanets.csv
+          Page {currentPage.toLocaleString()} of {totalPages.toLocaleString()}
         </p>
       </div>
 
