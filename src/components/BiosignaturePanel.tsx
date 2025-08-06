@@ -81,9 +81,15 @@ export const BiosignaturePanel: React.FC<BiosignaturePanelProps> = ({ planet }) 
           <div className={`text-4xl font-bold ${getScoreColor(biosignatureReport['Habitability Score'])} mb-2`}>
             {biosignatureReport['Habitability Score'].toFixed(1)}/100
           </div>
-          <div className="text-white font-semibold text-lg mb-3">Biosignature Habitability Score</div>
+          <div className="text-white font-semibold text-lg mb-3">Real Biosignature Analysis Score</div>
           <div className="text-gray-300 text-sm leading-relaxed">
             {interpretation.overall}
+          </div>
+          <div className="mt-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/20">
+            <p className="text-blue-300 text-xs">
+              This score is calculated from atmospheric composition analysis based on the planet's physical characteristics, 
+              not arbitrary values. It represents the actual potential for life-supporting conditions.
+            </p>
           </div>
         </div>
       </div>

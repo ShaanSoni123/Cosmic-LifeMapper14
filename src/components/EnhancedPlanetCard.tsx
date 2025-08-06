@@ -1,6 +1,6 @@
 import React from 'react';
 import { Thermometer, Clock, Star, Globe, Calendar, Activity, Droplets, Ruler, Weight, Target } from 'lucide-react';
-import { HabitabilityBar } from './HabitabilityBar';
+import { generatePlanetBiosignatures, generateBiosignatureReport } from '../utils/biosignatureAnalysis';
 
 interface EnhancedPlanetCardProps {
   planet: {
@@ -25,6 +25,18 @@ interface EnhancedPlanetCardProps {
 }
 
 export const EnhancedPlanetCard: React.FC<EnhancedPlanetCardProps> = ({ planet, onClick }) => {
+  // Calculate real biosignature score
+  const biosignatureInput = generatePlanetBiosignatures({
+    temperature: planet.temperature || planet.stellarTemperature || 288,
+    radius: planet.radius || 1.0,
+    mass: planet.mass || 1.0,
+    starType: planet.starType || 'G2V',
+    inHabitableZone: planet.inHabitableZone,
+    habitabilityScore: planet.habitabilityScore
+  });
+  const biosignatureReport = generateBiosignatureReport(biosignatureInput);
+  const realBiosignatureScore = biosignatureReport['Habitability Score'];
+
   const getTemperatureColor = (temp?: number) => {
     if (!temp) return 'from-gray-500 to-gray-300';
     if (temp < 200) return 'from-blue-500 to-cyan-300';
@@ -130,7 +142,28 @@ export const EnhancedPlanetCard: React.FC<EnhancedPlanetCardProps> = ({ planet, 
 
         {/* Habitability Score Bar */}
         <div className="pt-3 border-t border-white/20">
-          <HabitabilityBar score={planet.habitabilityScore} size="medium" />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-gray-400">Biosignature Score</span>
+            <span className={`text-sm font-bold ${
+              realBiosignatureScore >= 80 ? 'text-green-400' :
+              realBiosignatureScore >= 60 ? 'text-yellow-400' :
+              realBiosignatureScore >= 40 ? 'text-orange-400' : 'text-red-400'
+            }`}>
+              {realBiosignatureScore.toFixed(1)}/100
+            </span>
+          </div>
+          
+          <div className="w-full bg-gray-700 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all duration-1000 ${
+                realBiosignatureScore >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
+                realBiosignatureScore >= 60 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' :
+                realBiosignatureScore >= 40 ? 'bg-gradient-to-r from-orange-500 to-red-400' :
+                'bg-gradient-to-r from-red-500 to-red-600'
+              }`}
+              style={{ width: `${realBiosignatureScore}%` }}
+            />
+          </div>
         </div>
 
         {/* Special Indicators */}
@@ -142,7 +175,7 @@ export const EnhancedPlanetCard: React.FC<EnhancedPlanetCardProps> = ({ planet, 
             </div>
           )}
           
-          {planet.habitabilityScore >= 70 && (
+          {realBiosignatureScore >= 80 && (
             <div className="flex items-center gap-1 px-2 py-1 bg-blue-500/20 rounded-full border border-blue-500/30">
               <Target className="w-3 h-3 text-blue-400" />
               <span className="text-xs text-blue-400 font-medium">Prime</span>

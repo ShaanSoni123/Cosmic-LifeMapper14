@@ -1,5 +1,6 @@
 import { Exoplanet } from '../data/exoplanets';
 import { extendedExoplanetData, ExtendedExoplanetData } from '../data/extendedExoplanets';
+import { generatePlanetBiosignatures, generateBiosignatureReport } from './biosignatureAnalysis';
 import { 
   calculateHabitabilityScoreBackend,
   habitableZoneBoundsExtended,
@@ -30,6 +31,27 @@ export { estimateSurfaceTemperature, calculateSurfaceGravity, calculateWaterRete
  * Calculate comprehensive habitability score (0-10)
  */
 export function calculateHabitabilityScore(planet: Exoplanet): number {
+  // Use biosignature analysis for more accurate scoring
+  const biosignatureInput = generatePlanetBiosignatures({
+    temperature: planet.temperature,
+    radius: planet.radius,
+    mass: planet.mass,
+    starType: planet.starType,
+    inHabitableZone: planet.temperature >= 200 && planet.temperature <= 350,
+    habitabilityScore: 0 // Will be calculated
+  });
+  
+  const biosignatureReport = generateBiosignatureReport(biosignatureInput);
+  const biosignatureScore = biosignatureReport['Habitability Score'];
+  
+  // Convert biosignature score (0-100) to our scale (0-10)
+  return Math.round(biosignatureScore / 10 * 100) / 100;
+}
+
+/**
+ * Calculate comprehensive habitability score using backend method (0-10)
+ */
+export function calculateHabitabilityScoreExtended(planet: Exoplanet): number {
   // Try to find extended data for this planet
   const extendedData = extendedExoplanetData.find(data => 
     data.planet_name.toLowerCase().includes(planet.name.toLowerCase()) ||
@@ -50,7 +72,7 @@ export function calculateHabitabilityScore(planet: Exoplanet): number {
     );
     
     // Add biosignature bonus
-    const biosignatureBonus = planet.biosignatures.length > 0 ? 0.1 + (planet.biosignatures.length * 0.05) : 0;
+    const biosignatureBonus = planet.biosignatures.length > 0 ? 0.05 + (planet.biosignatures.length * 0.02) : 0;
     const finalScore = Math.min(1, backendScore + biosignatureBonus);
     
     return Math.round(finalScore * 1000) / 10; // Convert to 100-point scale with 1 decimal
@@ -70,7 +92,7 @@ export function calculateHabitabilityScore(planet: Exoplanet): number {
       4.6  // Default star age
     );
     
-    const biosignatureBonus = planet.biosignatures.length > 0 ? 0.1 + (planet.biosignatures.length * 0.05) : 0;
+    const biosignatureBonus = planet.biosignatures.length > 0 ? 0.05 + (planet.biosignatures.length * 0.02) : 0;
     const finalScore = Math.min(1, backendScore + biosignatureBonus);
     
     return Math.round(finalScore * 1000) / 10; // Convert to 100-point scale with 1 decimal
@@ -117,7 +139,8 @@ function getStarTemperature(starType: string): number {
  */
 export function clusterPlanets(planets: Exoplanet[]): ExtendedExoplanet[] {
   return planets.map(planet => {
-    const habitabilityScore = calculateHabitabilityScore(planet);
+    // Use the actual habitability score from the planet data (calculated from biosignatures)
+    const habitabilityScore = planet.habitabilityScore * 10; // Convert to 0-100 scale
     
     // Try to find extended data for this planet
     const extendedData = extendedExoplanetData.find(data => 
@@ -153,13 +176,13 @@ export function clusterPlanets(planets: Exoplanet[]): ExtendedExoplanet[] {
     let cluster: number;
     let clusterLabel: string;
     
-    if (habitabilityScore >= 70) {
+    if (habitabilityScore >= 80) {
       cluster = 0;
       clusterLabel = "Very High Habitability Potential";
-    } else if (habitabilityScore >= 50) {
+    } else if (habitabilityScore >= 60) {
       cluster = 1;
       clusterLabel = "Moderate to High Habitability Potential";
-    } else if (habitabilityScore >= 25) {
+    } else if (habitabilityScore >= 40) {
       cluster = 2;
       clusterLabel = "Low Habitability Potential";
     } else {

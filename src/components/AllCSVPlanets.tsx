@@ -4,6 +4,7 @@ import { csvLoader } from '../services/csvLoader';
 import { Exoplanet } from '../data/exoplanets';
 import { ExtendedExoplanet } from '../utils/exoplanetAnalysis';
 import { HabitabilityBar } from './HabitabilityBar';
+import { generatePlanetBiosignatures, generateBiosignatureReport } from '../utils/biosignatureAnalysis';
 
 interface AllCSVPlanetsProps {
   onPlanetSelect: (planet: ExtendedExoplanet) => void;
@@ -174,6 +175,21 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
       onClick={onClick}
       className="group cursor-pointer transform transition-all duration-500 hover:scale-105"
     >
+      {/* Calculate real biosignature score */}
+      {(() => {
+        const biosignatureInput = generatePlanetBiosignatures({
+          temperature: planet.temperature,
+          radius: planet.radius,
+          mass: planet.mass,
+          starType: planet.starType,
+          inHabitableZone: planet.temperature >= 200 && planet.temperature <= 350,
+          habitabilityScore: planet.habitabilityScore
+        });
+        const biosignatureReport = generateBiosignatureReport(biosignatureInput);
+        const realBiosignatureScore = biosignatureReport['Habitability Score'];
+
+        return (
+          <>
       {/* Planet visualization */}
       <div className="relative w-20 h-20 mx-auto mb-4">
         <div
@@ -250,7 +266,28 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
 
         {/* Habitability Score */}
         <div className="pt-3 border-t border-white/20">
-          <HabitabilityBar score={planet.habitabilityScore * 10} size="medium" />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-gray-400">Biosignature Score</span>
+            <span className={`text-sm font-bold ${
+              realBiosignatureScore >= 80 ? 'text-green-400' :
+              realBiosignatureScore >= 60 ? 'text-yellow-400' :
+              realBiosignatureScore >= 40 ? 'text-orange-400' : 'text-red-400'
+            }`}>
+              {realBiosignatureScore.toFixed(1)}/100
+            </span>
+          </div>
+          
+          <div className="w-full bg-gray-700 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all duration-1000 ${
+                realBiosignatureScore >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
+                realBiosignatureScore >= 60 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' :
+                realBiosignatureScore >= 40 ? 'bg-gradient-to-r from-orange-500 to-red-400' :
+                'bg-gradient-to-r from-red-500 to-red-600'
+              }`}
+              style={{ width: `${realBiosignatureScore}%` }}
+            />
+          </div>
         </div>
 
         {/* Special Indicators */}
@@ -269,10 +306,10 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
             </div>
           )}
 
-          {planet.temperature >= 200 && planet.temperature <= 350 && (
+          {realBiosignatureScore >= 60 && (
             <div className="flex items-center gap-1 px-2 py-1 bg-green-500/20 rounded-full border border-green-500/30">
-              <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-xs text-green-400 font-medium">HZ</span>
+              <Zap className="w-3 h-3 text-green-400" />
+              <span className="text-xs text-green-400 font-medium">Bio+</span>
             </div>
           )}
         </div>
@@ -284,6 +321,9 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
           </div>
         </div>
       </div>
+          </>
+        );
+      })()}
     </div>
   );
 
