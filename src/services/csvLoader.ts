@@ -25,7 +25,6 @@ export class CSVExoplanetLoader {
 
     if (this.loading) {
       console.log('⏳ CSV loading in progress...');
-      // Wait for loading to complete
       while (this.loading) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
@@ -33,47 +32,22 @@ export class CSVExoplanetLoader {
     }
 
     this.loading = true;
-    console.log('🚀 Starting to load ALL exoplanets from backend/exoplanets.csv...');
+    console.log('🚀 Loading exoplanets from backend/exoplanets.csv...');
 
     try {
-      // Try multiple paths to find the CSV file
-      const possiblePaths = [
-        '/backend/exoplanets.csv',
-        './backend/exoplanets.csv',
-        '/public/backend/exoplanets.csv',
-        'backend/exoplanets.csv',
-        '../backend/exoplanets.csv'
-      ];
-
-      let csvText = '';
-      let successPath = '';
-
-      for (const path of possiblePaths) {
-        try {
-          console.log(`🔍 Trying to load CSV from: ${path}`);
-          const response = await fetch(path);
-          if (response.ok) {
-            csvText = await response.text();
-            successPath = path;
-            console.log(`✅ Successfully loaded CSV from: ${path}`);
-            console.log(`📊 CSV file size: ${csvText.length} characters`);
-            break;
-          }
-        } catch (error) {
-          console.log(`❌ Failed to load from ${path}:`, error);
-        }
+      // Try to load the CSV file from backend directory
+      const response = await fetch('/backend/exoplanets.csv');
+      if (!response.ok) {
+        throw new Error(`Failed to load CSV: ${response.status}`);
       }
 
-      if (!csvText) {
-        throw new Error('Could not load CSV file from any path');
-      }
+      const csvText = await response.text();
+      console.log(`📊 CSV file loaded: ${csvText.length} characters`);
 
-      console.log('🔄 Parsing CSV data...');
       this.planets = this.parseCSV(csvText);
       this.loaded = true;
       
-      console.log(`🎉 SUCCESS! Loaded ${this.planets.length} exoplanets from ${successPath}`);
-      console.log('📋 Sample planet names:', this.planets.slice(0, 5).map(p => p.name));
+      console.log(`🎉 SUCCESS! Loaded ${this.planets.length} unique exoplanets from CSV`);
       
       return this.planets;
 
@@ -97,19 +71,19 @@ export class CSVExoplanetLoader {
 
     // Parse headers
     const headers = this.parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
-    console.log(`📋 CSV Headers (${headers.length}):`, headers.slice(0, 10), '...');
+    console.log(`📋 CSV Headers found: ${headers.length} columns`);
 
     const planets: Exoplanet[] = [];
+    const seenPlanets = new Set<string>(); // Track unique planets
     let successCount = 0;
+    let duplicateCount = 0;
     let errorCount = 0;
 
     // Parse each data line
     for (let i = 1; i < lines.length; i++) {
       try {
         const values = this.parseCSVLine(lines[i]);
-        if (values.length < headers.length - 5) { // Allow some missing columns
-          continue;
-        }
+        if (values.length < 5) continue; // Skip incomplete rows
 
         const row: CSVRow = {};
         headers.forEach((header, index) => {
@@ -118,27 +92,34 @@ export class CSVExoplanetLoader {
 
         const planet = this.convertRowToPlanet(row, i);
         if (planet && planet.name && planet.name.trim() !== '') {
+          // Check for duplicates
+          const planetKey = planet.name.toLowerCase().trim();
+          if (seenPlanets.has(planetKey)) {
+            duplicateCount++;
+            continue; // Skip duplicate
+          }
+          
+          seenPlanets.add(planetKey);
           planets.push(planet);
           successCount++;
         }
       } catch (error) {
         errorCount++;
-        if (errorCount < 10) { // Only log first 10 errors
+        if (errorCount < 5) {
           console.warn(`⚠️ Error parsing line ${i + 1}:`, error);
         }
       }
 
-      // Progress logging for large datasets
       if (i % 1000 === 0) {
-        console.log(`📊 Processed ${i}/${lines.length} lines, found ${successCount} valid planets`);
+        console.log(`📊 Processed ${i}/${lines.length} lines, found ${successCount} unique planets`);
       }
     }
 
     console.log(`✅ CSV Parsing Complete!`);
     console.log(`📊 Total lines processed: ${lines.length - 1}`);
-    console.log(`✅ Successfully parsed: ${successCount} planets`);
+    console.log(`✅ Unique planets parsed: ${successCount}`);
+    console.log(`🔄 Duplicates removed: ${duplicateCount}`);
     console.log(`❌ Parsing errors: ${errorCount}`);
-    console.log(`🎯 Final planet count: ${planets.length}`);
 
     return planets;
   }
@@ -154,7 +135,6 @@ export class CSVExoplanetLoader {
       
       if (char === '"') {
         if (inQuotes && line[i + 1] === '"') {
-          // Handle escaped quotes
           current += '"';
           i += 2;
           continue;
@@ -175,65 +155,72 @@ export class CSVExoplanetLoader {
 
   private convertRowToPlanet(row: CSVRow, index: number): Exoplanet | null {
     try {
-      // Try multiple possible column names for planet name
-      const possibleNameColumns = ['pl_name', 'name', 'planet_name', 'Planet Name', 'PLANET_NAME'];
-      let planetName = '';
-      
-      for (const col of possibleNameColumns) {
-        if (row[col] && row[col].trim() !== '') {
-          planetName = row[col].trim();
-          break;
-        }
+      // Get planet name from CSV
+      const planetName = this.getValueFromRow(row, [
+        'pl_name', 'name', 'planet_name', 'Planet Name', 'PLANET_NAME'
+      ]);
+
+      if (!planetName || planetName.trim() === '') {
+        return null;
       }
 
-      if (!planetName) {
-        planetName = `CSV-Planet-${index}`;
-      }
+      // Extract all data from CSV with proper column mapping
+      const distance = this.parseFloat(this.getValueFromRow(row, [
+        'sy_dist', 'distance', 'dist', 'Distance', 'sy_distance'
+      ])) || this.generateRealisticDistance();
 
-      // Extract data with multiple fallback column names
-      const distance = this.parseFloat(
-        row['sy_dist'] || row['distance'] || row['dist'] || row['Distance'] || row['sy_distance']
-      ) || this.generateRealisticDistance();
+      const orbitalPeriod = this.parseFloat(this.getValueFromRow(row, [
+        'pl_orbper', 'orbital_period', 'period', 'Period', 'pl_period'
+      ])) || this.generateRealisticPeriod();
 
-      const orbitalPeriod = this.parseFloat(
-        row['pl_orbper'] || row['orbital_period'] || row['period'] || row['Period'] || row['pl_period']
-      ) || this.generateRealisticPeriod();
+      const temperature = this.parseFloat(this.getValueFromRow(row, [
+        'pl_eqt', 'temperature', 'temp', 'Temperature', 'pl_temp', 'st_teff'
+      ])) || this.generateRealisticTemperature();
 
-      const temperature = this.parseFloat(
-        row['pl_eqt'] || row['temperature'] || row['temp'] || row['Temperature'] || row['pl_temp'] || row['st_teff']
-      ) || this.generateRealisticTemperature();
+      const radius = this.parseFloat(this.getValueFromRow(row, [
+        'pl_rade', 'radius', 'pl_radius', 'Radius', 'planet_radius'
+      ])) || this.generateRealisticRadius();
 
-      const radius = this.parseFloat(
-        row['pl_rade'] || row['radius'] || row['pl_radius'] || row['Radius'] || row['planet_radius']
-      ) || this.generateRealisticRadius();
+      const mass = this.parseFloat(this.getValueFromRow(row, [
+        'pl_bmasse', 'mass', 'pl_mass', 'Mass', 'planet_mass'
+      ])) || this.generateRealisticMass(radius);
 
-      const mass = this.parseFloat(
-        row['pl_bmasse'] || row['mass'] || row['pl_mass'] || row['Mass'] || row['planet_mass']
-      ) || this.generateRealisticMass(radius);
+      const discoveryYear = this.parseInt(this.getValueFromRow(row, [
+        'disc_year', 'discovery_year', 'year', 'Year', 'disc_date'
+      ])) || this.generateRealisticYear();
 
-      const discoveryYear = this.parseInt(
-        row['disc_year'] || row['discovery_year'] || row['year'] || row['Year'] || row['disc_date']
-      ) || this.generateRealisticYear();
+      const starType = this.getStarType(this.getValueFromRow(row, [
+        'st_spectype', 'star_type', 'stellar_type', 'Star_Type', 'st_teff'
+      ]));
 
-      const starType = this.getStarType(
-        row['st_teff'] || row['star_temp'] || row['stellar_temperature'] || row['Star_Type'] || row['st_spectype']
-      );
+      const constellation = this.getValueFromRow(row, [
+        'constellation', 'Constellation'
+      ]) || this.getRandomConstellation();
 
-      const constellation = row['constellation'] || row['Constellation'] || this.getRandomConstellation();
+      const discoveryMethod = this.getValueFromRow(row, [
+        'discoverymethod', 'discovery_method', 'method', 'Method'
+      ]) || 'Transit';
+
+      const discoveryFacility = this.getValueFromRow(row, [
+        'disc_facility', 'discovery_facility', 'facility', 'Facility'
+      ]) || 'Unknown';
+
+      // Calculate realistic biosignature score based on planet characteristics
+      const biosignatureScore = this.calculateBiosignatureScore(temperature, radius, mass, distance);
 
       const planet: Exoplanet = {
-        id: `csv-${index}-${planetName.toLowerCase().replace(/\s+/g, '-')}`,
+        id: `csv-${planetName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`,
         name: planetName,
         distanceFromEarth: distance,
         orbitalPeriod: orbitalPeriod,
         temperature: temperature,
         starType: starType,
-        biosignatures: this.getBiosignatures(row, temperature),
+        biosignatures: this.getBiosignatures(temperature, biosignatureScore),
         radius: radius,
         mass: mass,
         discoveryYear: discoveryYear,
         constellation: constellation,
-        habitabilityScore: this.calculateHabitabilityScore(temperature, radius, mass, distance)
+        habitabilityScore: biosignatureScore
       };
 
       return planet;
@@ -243,7 +230,16 @@ export class CSVExoplanetLoader {
     }
   }
 
-  private parseFloat(value: string | undefined): number | undefined {
+  private getValueFromRow(row: CSVRow, possibleColumns: string[]): string {
+    for (const col of possibleColumns) {
+      if (row[col] && row[col].trim() !== '' && row[col] !== 'null') {
+        return row[col].trim();
+      }
+    }
+    return '';
+  }
+
+  private parseFloat(value: string): number | undefined {
     if (!value || value === '' || value === 'null' || value === 'NaN' || value === 'undefined') {
       return undefined;
     }
@@ -251,7 +247,7 @@ export class CSVExoplanetLoader {
     return isNaN(parsed) ? undefined : Math.abs(parsed);
   }
 
-  private parseInt(value: string | undefined): number | undefined {
+  private parseInt(value: string): number | undefined {
     if (!value || value === '' || value === 'null' || value === 'NaN') {
       return undefined;
     }
@@ -259,17 +255,28 @@ export class CSVExoplanetLoader {
     return isNaN(parsed) ? undefined : parsed;
   }
 
-  private getStarType(tempStr: string | undefined): string {
-    const temp = this.parseFloat(tempStr);
-    if (!temp) return this.getRandomStarType();
-
-    if (temp > 30000) return 'O5V';
-    if (temp > 10000) return 'B5V';
-    if (temp > 7500) return 'A5V';
-    if (temp > 6000) return 'F5V';
-    if (temp > 5200) return 'G2V';
-    if (temp > 3700) return 'K5V';
-    return 'M5V';
+  private getStarType(value: string): string {
+    if (!value) return this.getRandomStarType();
+    
+    // If it's a temperature, convert to star type
+    const temp = this.parseFloat(value);
+    if (temp) {
+      if (temp > 30000) return 'O5V';
+      if (temp > 10000) return 'B5V';
+      if (temp > 7500) return 'A5V';
+      if (temp > 6000) return 'F5V';
+      if (temp > 5200) return 'G2V';
+      if (temp > 3700) return 'K5V';
+      return 'M5V';
+    }
+    
+    // If it's already a star type, clean it up
+    const cleaned = value.trim().toUpperCase();
+    if (cleaned.match(/^[OBAFGKM]\d*V?$/)) {
+      return cleaned;
+    }
+    
+    return this.getRandomStarType();
   }
 
   private getRandomStarType(): string {
@@ -277,90 +284,92 @@ export class CSVExoplanetLoader {
     return types[Math.floor(Math.random() * types.length)];
   }
 
-  private getBiosignatures(row: CSVRow, temperature: number): string[] {
-    const biosignatures: string[] = [];
+  private calculateBiosignatureScore(temperature: number, radius: number, mass: number, distance: number): number {
+    let score = 0;
     
-    // Check for potential biosignature indicators
-    if (temperature >= 200 && temperature <= 350) {
-      biosignatures.push('Potential water vapor');
+    // Temperature factor (optimal for liquid water)
+    if (temperature >= 273 && temperature <= 373) { // 0°C to 100°C
+      score += 4;
+    } else if (temperature >= 200 && temperature <= 400) {
+      score += 3;
+    } else if (temperature >= 150 && temperature <= 500) {
+      score += 2;
+    } else if (temperature >= 100 && temperature <= 600) {
+      score += 1;
     }
     
-    // Check for atmospheric composition hints in column names
-    const atmosphereColumns = Object.keys(row).filter(key => 
-      key.toLowerCase().includes('atmosphere') || 
-      key.toLowerCase().includes('h2o') || 
-      key.toLowerCase().includes('oxygen') ||
-      key.toLowerCase().includes('methane')
-    );
+    // Size factor (Earth-like is optimal)
+    if (radius >= 0.8 && radius <= 1.5) {
+      score += 3;
+    } else if (radius >= 0.5 && radius <= 2.5) {
+      score += 2;
+    } else if (radius >= 0.3 && radius <= 4.0) {
+      score += 1;
+    }
     
-    if (atmosphereColumns.length > 0) {
-      biosignatures.push('Atmospheric composition data');
+    // Mass factor (affects gravity and atmosphere retention)
+    if (mass >= 0.5 && mass <= 2.0) {
+      score += 2;
+    } else if (mass >= 0.1 && mass <= 10.0) {
+      score += 1;
+    }
+    
+    // Distance factor (closer planets are easier to study)
+    if (distance < 50) {
+      score += 1;
+    } else if (distance < 200) {
+      score += 0.5;
+    }
+    
+    return Math.min(10, Math.max(0, score));
+  }
+
+  private getBiosignatures(temperature: number, score: number): string[] {
+    const biosignatures: string[] = [];
+    
+    // Only add biosignatures for planets with good conditions
+    if (score >= 6) {
+      biosignatures.push('Water vapor potential');
+      if (temperature >= 273 && temperature <= 373) {
+        biosignatures.push('Liquid water possible');
+      }
+    }
+    
+    if (score >= 7) {
+      biosignatures.push('Atmospheric stability indicators');
+    }
+    
+    if (score >= 8) {
+      biosignatures.push('Oxygen traces possible');
+      biosignatures.push('Methane signatures');
     }
     
     return biosignatures;
   }
 
-  private calculateHabitabilityScore(temperature: number, radius: number, mass: number, distance: number): number {
-    let score = 0;
-    
-    // Temperature factor (Earth-like ~288K)
-    if (temperature >= 200 && temperature <= 350) {
-      score += 3;
-    } else if (temperature >= 150 && temperature <= 400) {
-      score += 2;
-    } else if (temperature >= 100 && temperature <= 500) {
-      score += 1;
-    }
-    
-    // Radius factor (Earth-like ~1.0)
-    if (radius >= 0.5 && radius <= 2.0) {
-      score += 3;
-    } else if (radius >= 0.3 && radius <= 3.0) {
-      score += 2;
-    } else {
-      score += 1;
-    }
-    
-    // Mass factor (Earth-like ~1.0)
-    if (mass >= 0.1 && mass <= 10.0) {
-      score += 2;
-    } else {
-      score += 1;
-    }
-    
-    // Distance factor (closer is more interesting for study)
-    if (distance < 50) {
-      score += 2;
-    } else if (distance < 200) {
-      score += 1;
-    }
-    
-    return Math.min(10, score);
-  }
-
   // Realistic data generators for missing values
   private generateRealisticDistance(): number {
-    return Math.random() * 1000 + 10; // 10-1010 light years
+    return Math.random() * 1000 + 10;
   }
 
   private generateRealisticPeriod(): number {
-    return Math.random() * 1000 + 1; // 1-1001 days
+    return Math.random() * 1000 + 1;
   }
 
   private generateRealisticTemperature(): number {
-    return Math.random() * 2000 + 100; // 100-2100 K
+    return Math.random() * 2000 + 100;
   }
 
   private generateRealisticRadius(): number {
-    return Math.random() * 5 + 0.1; // 0.1-5.1 Earth radii
+    return Math.random() * 5 + 0.1;
   }
 
   private generateRealisticMass(radius: number): number {
-    return Math.pow(radius, 2.5) * (0.5 + Math.random()); // Mass-radius relationship
+    return Math.pow(radius, 2.5) * (0.5 + Math.random());
   }
 
   private generateRealisticYear(): number {
-    return Math.floor(Math.random() * 30) + 1995; // 1995-2024
+    return Math.floor(Math.random() * 30) + 1995;
   }
 
   private getRandomConstellation(): string {

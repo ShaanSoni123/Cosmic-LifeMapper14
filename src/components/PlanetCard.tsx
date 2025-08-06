@@ -1,7 +1,7 @@
 import React from 'react';
 import { Thermometer, Clock, Star, Globe, Zap, Calendar, Activity, Droplets } from 'lucide-react';
 import { ExtendedExoplanet } from '../utils/exoplanetAnalysis';
-import { HabitabilityBar } from './HabitabilityBar';
+import { generatePlanetBiosignatures, generateBiosignatureReport } from '../utils/biosignatureAnalysis';
 
 interface PlanetCardProps {
   planet: ExtendedExoplanet;
@@ -9,6 +9,18 @@ interface PlanetCardProps {
 }
 
 export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick }) => {
+  // Calculate real biosignature score for this planet
+  const biosignatureInput = generatePlanetBiosignatures({
+    temperature: planet.temperature,
+    radius: planet.radius,
+    mass: planet.mass,
+    starType: planet.starType,
+    inHabitableZone: planet.inHabitableZone,
+    habitabilityScore: planet.habitabilityScore
+  });
+  const biosignatureReport = generateBiosignatureReport(biosignatureInput);
+  const realBiosignatureScore = biosignatureReport['Habitability Score'];
+
   const getTemperatureColor = (temp: number) => {
     if (temp < 200) return 'from-blue-500 to-cyan-300';
     if (temp < 280) return 'from-green-500 to-emerald-300';
@@ -16,10 +28,10 @@ export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick }) => {
     return 'from-red-500 to-pink-300';
   };
 
-  const getHabitabilityColor = (score: number) => {
-    if (score >= 70) return 'text-green-400';
-    if (score >= 50) return 'text-yellow-400';
-    if (score >= 25) return 'text-orange-400';
+  const getBiosignatureColor = (score: number) => {
+    if (score >= 80) return 'text-green-400';
+    if (score >= 60) return 'text-yellow-400';
+    if (score >= 40) return 'text-orange-400';
     return 'text-red-400';
   };
 
@@ -74,7 +86,24 @@ export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick }) => {
         </div>
 
         <div className="mt-3 pt-3 border-t border-white/20">
-          <HabitabilityBar score={Math.round(planet.habitabilityScore)} size="medium" />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-gray-400">Biosignature Score</span>
+            <span className={`text-sm font-bold ${getBiosignatureColor(realBiosignatureScore)}`}>
+              {realBiosignatureScore.toFixed(1)}/100
+            </span>
+          </div>
+          
+          <div className="w-full bg-gray-700 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all duration-1000 ${
+                realBiosignatureScore >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
+                realBiosignatureScore >= 60 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' :
+                realBiosignatureScore >= 40 ? 'bg-gradient-to-r from-orange-500 to-red-400' :
+                'bg-gradient-to-r from-red-500 to-red-600'
+              }`}
+              style={{ width: `${realBiosignatureScore}%` }}
+            />
+          </div>
         </div>
 
         {/* Scientific indicators */}
@@ -87,8 +116,8 @@ export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onClick }) => {
             </div>
             <div className="flex items-center gap-1">
               <Droplets className="w-3 h-3 text-cyan-400" />
-              <span className="text-gray-400">H₂O:</span>
-              <span className="text-white">{(planet.waterRetentionPotential * 100).toFixed(0)}%</span>
+              <span className="text-gray-400">Bio Score:</span>
+              <span className="text-white">{realBiosignatureScore.toFixed(0)}</span>
             </div>
           </div>
           
