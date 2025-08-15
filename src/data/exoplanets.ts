@@ -43,6 +43,20 @@ export const exoplanets: Exoplanet[] = [
     habitabilityScore: 0
   },
   {
+    id: "proxima-centauri-b-enhanced",
+    name: "Proxima Centauri b",
+    distanceFromEarth: 4.24,
+    orbitalPeriod: 11.2,
+    temperature: 234,
+    starType: "M5.5V",
+    biosignatures: ["Possible atmospheric water vapor", "Potential methane traces", "Magnetic field indicators"],
+    radius: 1.1,
+    mass: 1.3,
+    discoveryYear: 2016,
+    constellation: "Centaurus",
+    habitabilityScore: 6.5
+  },
+  {
     id: "trappist-1e",
     name: "TRAPPIST-1e",
     distanceFromEarth: 40.7,
