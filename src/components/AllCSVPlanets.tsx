@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ChevronLeft, ChevronRight, Database, Globe, Zap, Search, Calendar, Telescope, Star, Thermometer, Weight, Ruler, Clock, Target, Activity, Droplets, Shield, Filter, SortAsc } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Database, Globe, Zap, Search, Calendar, Telescope, Star, Thermometer, Weight, Ruler, Clock, Target, Activity, Droplets, Shield, Filter, SortAsc, X } from 'lucide-react';
 import { csvLoader } from '../services/csvLoader';
 import { Exoplanet } from '../data/exoplanets';
 import { ExtendedExoplanet } from '../utils/exoplanetAnalysis';
@@ -16,306 +16,6 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('habitability');
-  const [filterBy, setFilterBy] = useState('all');
-  const [loadingProgress, setLoadingProgress] = useState('');
-  const [searchResults, setSearchResults] = useState<Exoplanet[]>([]);
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const [searchResults, setSearchResults] = useState<Exoplanet[]>([]);
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const [searchResults, setSearchResults] = useState<Exoplanet[]>([]);
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const [searchResults, setSearchResults] = useState<Exoplanet[]>([]);
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const planetsPerPage = 100; // Show more planets per page
-
-  // Convert Exoplanet to ExtendedExoplanet format
-  const convertToExtendedExoplanet = (planet: Exoplanet): ExtendedExoplanet => {
-    const surfaceGravity = planet.mass / Math.pow(planet.radius, 2);
-    const waterRetentionPotential = Math.min(1, planet.habitabilityScore / 10);
-    const radiationHazardIndex = Math.max(0, 1 - planet.habitabilityScore / 10);
-    
-    // Determine cluster based on habitability score
-    let cluster: number;
-    let clusterLabel: string;
-    
-    if (planet.habitabilityScore >= 7) {
-      cluster = 0;
-      clusterLabel = "Very High Habitability Potential";
-    } else if (planet.habitabilityScore >= 5) {
-      cluster = 1;
-      clusterLabel = "Moderate to High Habitability Potential";
-    } else if (planet.habitabilityScore >= 2.5) {
-      cluster = 2;
-      clusterLabel = "Low Habitability Potential";
-    } else {
-      cluster = 3;
-      clusterLabel = "Very Low Habitability Potential";
-    }
-    
-    // Check if in habitable zone based on temperature
-    const inHabitableZone = planet.temperature >= 200 && planet.temperature <= 350;
-    
-    return {
-      ...planet,
-      habitabilityScore: planet.habitabilityScore * 10, // Convert to 0-100 scale
-      surfaceTemperature: planet.temperature,
-      surfaceGravity,
-      waterRetentionPotential,
-      radiationHazardIndex,
-      cluster,
-      clusterLabel,
-      inHabitableZone
-    };
-  };
-
-  useEffect(() => {
-    const loadAllCSVPlanets = async () => {
-      setLoading(true);
-      setLoadingProgress('🚀 Connecting to backend/exoplanets.csv...');
-      
-      try {
-        console.log('🌟 Starting to load ALL 5900+ exoplanets from CSV...');
-        
-        // Add progress updates
-        const progressInterval = setInterval(() => {
-          if (csvLoader.isLoading()) {
-            const messages = [
-              '📡 Reading CSV file from backend...',
-              '🔍 Parsing 5900+ exoplanet records...',
-              '🧮 Processing planetary data...',
-              '🌍 Calculating habitability scores...',
-              '✨ Almost ready...'
-            ];
-            const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-            setLoadingProgress(randomMessage);
-          }
-        }, 2000);
-
-        const csvPlanets = await csvLoader.loadCSVData();
-        clearInterval(progressInterval);
-        
-        console.log(`✅ Successfully loaded ${csvPlanets.length} planets from CSV!`);
-        setAllPlanets(csvPlanets);
-        setFilteredPlanets(csvPlanets);
-        setLoadingProgress(`🎉 Loaded ${csvPlanets.length} exoplanets successfully!`);
-        
-        // Show success message briefly
-        setTimeout(() => setLoading(false), 1000);
-        
-      } catch (error) {
-        console.error('💥 Error loading CSV planets:', error);
-        setLoadingProgress('❌ Error loading CSV file. Please check the file path.');
-        setTimeout(() => setLoading(false), 3000);
-      }
-    };
-
-    loadAllCSVPlanets();
-  }, []);
-
-  // Handle search with real-time results
-  const handleSearchChange = (term: string) => {
-    setSearchTerm(term);
-    
-    if (term.length >= 2) {
-      // Perform fuzzy search on planet names
-      const results = allPlanets.filter(planet => {
-        const planetName = planet.name.toLowerCase();
-        const searchLower = term.toLowerCase();
-        
-        // Exact match gets highest priority
-        if (planetName.includes(searchLower)) return true;
-        
-        // Check individual words
-        const searchWords = searchLower.split(' ');
-        const planetWords = planetName.split(' ');
-        
-        return searchWords.some(searchWord => 
-          planetWords.some(planetWord => 
-            planetWord.includes(searchWord) || searchWord.includes(planetWord)
-          )
-        );
-      }).slice(0, 10); // Show top 10 results
-      
-      setSearchResults(results);
-      setShowSearchDropdown(results.length > 0);
-    } else {
-      setSearchResults([]);
-      setShowSearchDropdown(false);
-    }
-  };
-
-  // Handle planet selection from search dropdown
-  const handleSearchSelect = (planet: Exoplanet) => {
-    setSearchTerm(planet.name);
-    setShowSearchDropdown(false);
-    setSearchResults([]);
-    
-    // Filter to show only this planet
-    setFilteredPlanets([planet]);
-    setCurrentPage(1);
-  };
-
-  // Clear search and show all planets
-  const clearSearch = () => {
-    setSearchTerm('');
-    setShowSearchDropdown(false);
-    setSearchResults([]);
-    setFilteredPlanets(allPlanets);
-    setCurrentPage(1);
-  };
-  // Handle search with real-time results
-  const handleSearchChange = (term: string) => {
-    setSearchTerm(term);
-    
-    if (term.length >= 2) {
-      // Perform fuzzy search on planet names
-      const results = allPlanets.filter(planet => {
-        const planetName = planet.name.toLowerCase();
-        const searchLower = term.toLowerCase();
-        
-        // Exact match gets highest priority
-        if (planetName.includes(searchLower)) return true;
-        
-        // Check individual words
-        const searchWords = searchLower.split(' ');
-        const planetWords = planetName.split(' ');
-        
-        return searchWords.some(searchWord => 
-          planetWords.some(planetWord => 
-            planetWord.includes(searchWord) || searchWord.includes(planetWord)
-          )
-        );
-      }).slice(0, 10); // Show top 10 results
-      
-      setSearchResults(results);
-      setShowSearchDropdown(results.length > 0);
-    } else {
-      setSearchResults([]);
-      setShowSearchDropdown(false);
-    }
-  };
-
-  // Handle planet selection from search dropdown
-  const handleSearchSelect = (planet: Exoplanet) => {
-    setSearchTerm(planet.name);
-    setShowSearchDropdown(false);
-    setSearchResults([]);
-    
-    // Filter to show only this planet
-    setFilteredPlanets([planet]);
-    setCurrentPage(1);
-  };
-
-  // Clear search and show all planets
-  const clearSearch = () => {
-    setSearchTerm('');
-    setShowSearchDropdown(false);
-    setSearchResults([]);
-    setFilteredPlanets(allPlanets);
-    setCurrentPage(1);
-  };
-  // Handle search with real-time results
-  const handleSearchChange = (term: string) => {
-    setSearchTerm(term);
-    
-    if (term.length >= 2) {
-      // Perform fuzzy search on planet names
-      const results = allPlanets.filter(planet => {
-        const planetName = planet.name.toLowerCase();
-        const searchLower = term.toLowerCase();
-        
-        // Exact match gets highest priority
-        if (planetName.includes(searchLower)) return true;
-        
-        // Check individual words
-        const searchWords = searchLower.split(' ');
-        const planetWords = planetName.split(' ');
-        
-        return searchWords.some(searchWord => 
-          planetWords.some(planetWord => 
-            planetWord.includes(searchWord) || searchWord.includes(planetWord)
-          )
-        );
-      }).slice(0, 10); // Show top 10 results
-      
-      setSearchResults(results);
-      setShowSearchDropdown(results.length > 0);
-    } else {
-      setSearchResults([]);
-      setShowSearchDropdown(false);
-    }
-  };
-
-  // Handle planet selection from search dropdown
-  const handleSearchSelect = (planet: Exoplanet) => {
-    setSearchTerm(planet.name);
-    setShowSearchDropdown(false);
-    setSearchResults([]);
-    
-    // Filter to show only this planet
-    setFilteredPlanets([planet]);
-    setCurrentPage(1);
-  };
-
-  // Clear search and show all planets
-  const clearSearch = () => {
-    setSearchTerm('');
-    setShowSearchDropdown(false);
-    setSearchResults([]);
-    setFilteredPlanets(allPlanets);
-    setCurrentPage(1);
-  };
-  // Handle search with real-time results
-  const handleSearchChange = (term: string) => {
-    setSearchTerm(term);
-    
-    if (term.length >= 2) {
-      // Perform fuzzy search on planet names
-      const results = allPlanets.filter(planet => {
-        const planetName = planet.name.toLowerCase();
-        const searchLower = term.toLowerCase();
-        
-        // Exact match gets highest priority
-        if (planetName.includes(searchLower)) return true;
-        
-        // Check individual words
-        const searchWords = searchLower.split(' ');
-        const planetWords = planetName.split(' ');
-        
-        return searchWords.some(searchWord => 
-          planetWords.some(planetWord => 
-            planetWord.includes(searchWord) || searchWord.includes(planetWord)
-          )
-        );
-      }).slice(0, 10); // Show top 10 results
-      
-      setSearchResults(results);
-      setShowSearchDropdown(results.length > 0);
-    } else {
-      setSearchResults([]);
-      setShowSearchDropdown(false);
-    }
-  };
-
-  // Handle planet selection from search dropdown
-  const handleSearchSelect = (planet: Exoplanet) => {
-    setSearchTerm(planet.name);
-    setShowSearchDropdown(false);
-    setSearchResults([]);
-    
-    // Filter to show only this planet
-    setFilteredPlanets([planet]);
-    setCurrentPage(1);
-  };
-
-  // Clear search and show all planets
-  const clearSearch = () => {
-    setSearchTerm('');
-    setShowSearchDropdown(false);
-    setSearchResults([]);
-    setFilteredPlanets(allPlanets);
-    setCurrentPage(1);
   };
   // Filter and sort planets
   useEffect(() => {
@@ -347,6 +47,29 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
       // Only apply search if no specific planet is selected
       const matchesSearch = !searchTerm || 
       // Only apply search if no specific planet is selected
+      const matchesSearch = !searchTerm || 
+                           planet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           planet.constellation.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           planet.starType.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      switch (filterBy) {
+        case 'high-habitability':
+          return matchesSearch && planet.habitabilityScore >= 5;
+        case 'with-biosignatures':
+          return matchesSearch && planet.biosignatures.length > 0;
+        case 'nearby':
+          return matchesSearch && planet.distanceFromEarth < 100;
+        case 'recent':
+          return matchesSearch && planet.discoveryYear >= 2010;
+        case 'earth-like':
+          return matchesSearch && planet.radius >= 0.5 && planet.radius <= 2.0 && planet.temperature >= 200 && planet.temperature <= 350;
+        case 'super-earth':
+          return matchesSearch && planet.radius > 1.25 && planet.radius <= 2.0;
+        case 'hot-jupiter':
+          return matchesSearch && planet.radius > 5 && planet.temperature > 1000;
+              }}
+    
+    let filtered = allPlanets.filter(planet => {
       const matchesSearch = !searchTerm || 
                            planet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            planet.constellation.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -410,162 +133,158 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
     return 'from-red-500 to-pink-300';
   };
 
-  const CSVPlanetCard: React.FC<{ planet: Exoplanet; onClick: () => void }> = ({ planet, onClick }) => (
-    <div
-      onClick={onClick}
-      className="group cursor-pointer transform transition-all duration-500 hover:scale-105"
-    >
-      {/* Calculate real biosignature score */}
-      {(() => {
-        const biosignatureInput = generatePlanetBiosignatures({
-          temperature: planet.temperature,
-          radius: planet.radius,
-          mass: planet.mass,
-          starType: planet.starType,
-          inHabitableZone: planet.temperature >= 200 && planet.temperature <= 350,
-          habitabilityScore: planet.habitabilityScore
-        });
-        const biosignatureReport = generateBiosignatureReport(biosignatureInput);
-        const realBiosignatureScore = biosignatureReport['Habitability Score'];
+  const CSVPlanetCard: React.FC<{ planet: Exoplanet; onClick: () => void }> = ({ planet, onClick }) => {
+    // Calculate real biosignature score
+    const biosignatureInput = generatePlanetBiosignatures({
+      temperature: planet.temperature,
+      radius: planet.radius,
+      mass: planet.mass,
+      starType: planet.starType,
+      inHabitableZone: planet.temperature >= 200 && planet.temperature <= 350,
+      habitabilityScore: planet.habitabilityScore
+    });
+    const biosignatureReport = generateBiosignatureReport(biosignatureInput);
+    const realBiosignatureScore = biosignatureReport['Habitability Score'];
 
-        return (
-          <>
-      {/* Planet visualization */}
-      <div className="relative w-20 h-20 mx-auto mb-4">
-        <div
-          className={`absolute inset-0 rounded-full bg-gradient-to-br ${getTemperatureColor(
-            planet.temperature
-          )} shadow-xl animate-pulse group-hover:animate-none transition-all duration-500`}
-          style={{
-            boxShadow: `0 0 20px rgba(${planet.temperature < 280 ? '34, 197, 94' : '239, 68, 68'}, 0.3)`,
-          }}
-        />
-        <div className="absolute inset-1 rounded-full bg-gradient-to-br from-transparent to-black/20" />
-        
-        {/* Orbital rings */}
-        <div className="absolute -inset-6 border border-white/10 rounded-full animate-spin-slow" />
-        <div className="absolute -inset-8 border border-white/5 rounded-full animate-spin-reverse" />
+    return (
+      <div
+        onClick={onClick}
+        className="group cursor-pointer transform transition-all duration-500 hover:scale-105"
+      >
+        {/* Planet visualization */}
+        <div className="relative w-20 h-20 mx-auto mb-4">
+          <div
+            className={`absolute inset-0 rounded-full bg-gradient-to-br ${getTemperatureColor(
+              planet.temperature
+            )} shadow-xl animate-pulse group-hover:animate-none transition-all duration-500`}
+            style={{
+              boxShadow: `0 0 20px rgba(${planet.temperature < 280 ? '34, 197, 94' : '239, 68, 68'}, 0.3)`,
+            }}
+          />
+          <div className="absolute inset-1 rounded-full bg-gradient-to-br from-transparent to-black/20" />
+          
+          {/* Orbital rings */}
+          <div className="absolute -inset-6 border border-white/10 rounded-full animate-spin-slow" />
+          <div className="absolute -inset-8 border border-white/5 rounded-full animate-spin-reverse" />
+        </div>
+
+        {/* Planet info card */}
+        <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 shadow-xl">
+          <h3 className="text-lg font-bold text-white mb-3 group-hover:text-cyan-300 transition-colors truncate">
+            {planet.name}
+          </h3>
+          
+          {/* Primary Stats */}
+          <div className="space-y-2 text-sm mb-4">
+            <div className="flex items-center gap-2 text-gray-300">
+              <Globe className="w-4 h-4 text-blue-400" />
+              <span>{planet.distanceFromEarth.toFixed(1)} ly</span>
+            </div>
+            
+            <div className="flex items-center gap-2 text-gray-300">
+              <Clock className="w-4 h-4 text-green-400" />
+              <span>{planet.orbitalPeriod.toFixed(1)} days</span>
+            </div>
+            
+            <div className="flex items-center gap-2 text-gray-300">
+              <Thermometer className="w-4 h-4 text-red-400" />
+              <span>{planet.temperature.toFixed(0)}K</span>
+            </div>
+            
+            <div className="flex items-center gap-2 text-gray-300">
+              <Star className="w-4 h-4 text-yellow-400" />
+              <span>{planet.starType}</span>
+            </div>
+          </div>
+
+          {/* Physical Properties */}
+          <div className="grid grid-cols-2 gap-2 text-xs mb-4">
+            <div className="flex items-center gap-1">
+              <Ruler className="w-3 h-3 text-purple-400" />
+              <span className="text-gray-400">R:</span>
+              <span className="text-white">{planet.radius.toFixed(1)}⊕</span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <Weight className="w-3 h-3 text-orange-400" />
+              <span className="text-gray-400">M:</span>
+              <span className="text-white">{planet.mass.toFixed(1)}⊕</span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-cyan-400" />
+              <span className="text-gray-400">Disc:</span>
+              <span className="text-white">{planet.discoveryYear}</span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <Database className="w-3 h-3 text-pink-400" />
+              <span className="text-gray-400 truncate text-xs">
+                CSV
+              </span>
+            </div>
+          </div>
+
+          {/* Habitability Score */}
+          <div className="pt-3 border-t border-white/20">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-400">Biosignature Score</span>
+              <span className={`text-sm font-bold ${
+                realBiosignatureScore >= 80 ? 'text-green-400' :
+                realBiosignatureScore >= 60 ? 'text-yellow-400' :
+                realBiosignatureScore >= 40 ? 'text-orange-400' : 'text-red-400'
+              }`}>
+                {realBiosignatureScore.toFixed(1)}/100
+              </span>
+            </div>
+            
+            <div className="w-full bg-gray-700 rounded-full h-2">
+              <div
+                className={`h-2 rounded-full transition-all duration-1000 ${
+                  realBiosignatureScore >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
+                  realBiosignatureScore >= 60 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' :
+                  realBiosignatureScore >= 40 ? 'bg-gradient-to-r from-orange-500 to-red-400' :
+                  'bg-gradient-to-r from-red-500 to-red-600'
+                }`}
+                style={{ width: `${realBiosignatureScore}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Special Indicators */}
+          <div className="mt-3 flex flex-wrap gap-1">
+            {planet.biosignatures.length > 0 && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-green-500/20 rounded-full border border-green-500/30">
+                <Zap className="w-3 h-3 text-green-400" />
+                <span className="text-xs text-green-400 font-medium">Bio</span>
+              </div>
+            )}
+            
+            {planet.habitabilityScore >= 7 && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-blue-500/20 rounded-full border border-blue-500/30">
+                <Target className="w-3 h-3 text-blue-400" />
+                <span className="text-xs text-blue-400 font-medium">Prime</span>
+              </div>
+            )}
+
+            {realBiosignatureScore >= 60 && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-green-500/20 rounded-full border border-green-500/30">
+                <Zap className="w-3 h-3 text-green-400" />
+                <span className="text-xs text-green-400 font-medium">Bio+</span>
+              </div>
+            )}
+          </div>
+
+          {/* Discovery Info */}
+          <div className="mt-2">
+            <div className="text-xs text-gray-500 truncate">
+              {planet.constellation} constellation
+            </div>
+          </div>
+        </div>
       </div>
-
-      {/* Planet info card */}
-      <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 shadow-xl">
-        <h3 className="text-lg font-bold text-white mb-3 group-hover:text-cyan-300 transition-colors truncate">
-          {planet.name}
-        </h3>
-        
-        {/* Primary Stats */}
-        <div className="space-y-2 text-sm mb-4">
-          <div className="flex items-center gap-2 text-gray-300">
-            <Globe className="w-4 h-4 text-blue-400" />
-            <span>{planet.distanceFromEarth.toFixed(1)} ly</span>
-          </div>
-          
-          <div className="flex items-center gap-2 text-gray-300">
-            <Clock className="w-4 h-4 text-green-400" />
-            <span>{planet.orbitalPeriod.toFixed(1)} days</span>
-          </div>
-          
-          <div className="flex items-center gap-2 text-gray-300">
-            <Thermometer className="w-4 h-4 text-red-400" />
-            <span>{planet.temperature.toFixed(0)}K</span>
-          </div>
-          
-          <div className="flex items-center gap-2 text-gray-300">
-            <Star className="w-4 h-4 text-yellow-400" />
-            <span>{planet.starType}</span>
-          </div>
-        </div>
-
-        {/* Physical Properties */}
-        <div className="grid grid-cols-2 gap-2 text-xs mb-4">
-          <div className="flex items-center gap-1">
-            <Ruler className="w-3 h-3 text-purple-400" />
-            <span className="text-gray-400">R:</span>
-            <span className="text-white">{planet.radius.toFixed(1)}⊕</span>
-          </div>
-          
-          <div className="flex items-center gap-1">
-            <Weight className="w-3 h-3 text-orange-400" />
-            <span className="text-gray-400">M:</span>
-            <span className="text-white">{planet.mass.toFixed(1)}⊕</span>
-          </div>
-          
-          <div className="flex items-center gap-1">
-            <Calendar className="w-3 h-3 text-cyan-400" />
-            <span className="text-gray-400">Disc:</span>
-            <span className="text-white">{planet.discoveryYear}</span>
-          </div>
-          
-          <div className="flex items-center gap-1">
-            <Database className="w-3 h-3 text-pink-400" />
-            <span className="text-gray-400 truncate text-xs">
-              CSV
-            </span>
-          </div>
-        </div>
-
-        {/* Habitability Score */}
-        <div className="pt-3 border-t border-white/20">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-400">Biosignature Score</span>
-            <span className={`text-sm font-bold ${
-              realBiosignatureScore >= 80 ? 'text-green-400' :
-              realBiosignatureScore >= 60 ? 'text-yellow-400' :
-              realBiosignatureScore >= 40 ? 'text-orange-400' : 'text-red-400'
-            }`}>
-              {realBiosignatureScore.toFixed(1)}/100
-            </span>
-          </div>
-          
-          <div className="w-full bg-gray-700 rounded-full h-2">
-            <div
-              className={`h-2 rounded-full transition-all duration-1000 ${
-                realBiosignatureScore >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-400' :
-                realBiosignatureScore >= 60 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' :
-                realBiosignatureScore >= 40 ? 'bg-gradient-to-r from-orange-500 to-red-400' :
-                'bg-gradient-to-r from-red-500 to-red-600'
-              }`}
-              style={{ width: `${realBiosignatureScore}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Special Indicators */}
-        <div className="mt-3 flex flex-wrap gap-1">
-          {planet.biosignatures.length > 0 && (
-            <div className="flex items-center gap-1 px-2 py-1 bg-green-500/20 rounded-full border border-green-500/30">
-              <Zap className="w-3 h-3 text-green-400" />
-              <span className="text-xs text-green-400 font-medium">Bio</span>
-            </div>
-          )}
-          
-          {planet.habitabilityScore >= 7 && (
-            <div className="flex items-center gap-1 px-2 py-1 bg-blue-500/20 rounded-full border border-blue-500/30">
-              <Target className="w-3 h-3 text-blue-400" />
-              <span className="text-xs text-blue-400 font-medium">Prime</span>
-            </div>
-          )}
-
-          {realBiosignatureScore >= 60 && (
-            <div className="flex items-center gap-1 px-2 py-1 bg-green-500/20 rounded-full border border-green-500/30">
-              <Zap className="w-3 h-3 text-green-400" />
-              <span className="text-xs text-green-400 font-medium">Bio+</span>
-            </div>
-          )}
-        </div>
-
-        {/* Discovery Info */}
-        <div className="mt-2">
-          <div className="text-xs text-gray-500 truncate">
-            {planet.constellation} constellation
-          </div>
-        </div>
-      </div>
-          </>
-        );
-      })()}
-    </div>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -611,155 +330,8 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
                   setShowSearchDropdown(true);
                 }
               }}
-              onFocus={() => {
-                if (searchResults.length > 0) {
-                  setShowSearchDropdown(true);
-                }
-              }}
-              onFocus={() => {
-                if (searchResults.length > 0) {
-                  setShowSearchDropdown(true);
-                }
-              }}
-              onFocus={() => {
-                if (searchResults.length > 0) {
-                  setShowSearchDropdown(true);
-                }
-              }}
               className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent text-lg"
             />
-            
-            {/* Search Results Dropdown */}
-            {showSearchDropdown && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-lg border border-white/20 shadow-2xl z-50 max-h-80 overflow-y-auto">
-                <div className="p-2 border-b border-white/10">
-                  <div className="text-xs text-gray-400 px-2">
-                    Found {searchResults.length} planets matching "{searchTerm}"
-                  </div>
-                </div>
-                {searchResults.map((planet, index) => (
-                  <button
-                    key={`search-${planet.id}-${index}`}
-                    onClick={() => handleSearchSelect(planet)}
-                    className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0 flex items-center gap-3"
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getTemperatureColor(planet.temperature)}`} />
-                    <div className="flex-1">
-                      <div className="text-white font-medium">{planet.name}</div>
-                      <div className="text-gray-400 text-sm">
-                        {planet.constellation} • {planet.distanceFromEarth.toFixed(1)} ly • Score: {(planet.habitabilityScore * 10).toFixed(0)}/100
-                      </div>
-                    </div>
-                  </button>
-                ))}
-                <div className="p-2 border-t border-white/10">
-                  <button
-                    onClick={clearSearch}
-                    className="w-full text-center text-xs text-gray-400 hover:text-white transition-colors py-1"
-                  >
-                    Clear search and show all planets
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            {/* Clear search button */}
-            {searchTerm && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-            
-            {/* Search Results Dropdown */}
-            {showSearchDropdown && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-lg border border-white/20 shadow-2xl z-50 max-h-80 overflow-y-auto">
-                <div className="p-2 border-b border-white/10">
-                  <div className="text-xs text-gray-400 px-2">
-                    Found {searchResults.length} planets matching "{searchTerm}"
-                  </div>
-                </div>
-                {searchResults.map((planet, index) => (
-                  <button
-                    key={`search-${planet.id}-${index}`}
-                    onClick={() => handleSearchSelect(planet)}
-                    className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0 flex items-center gap-3"
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getTemperatureColor(planet.temperature)}`} />
-                    <div className="flex-1">
-                      <div className="text-white font-medium">{planet.name}</div>
-                      <div className="text-gray-400 text-sm">
-                        {planet.constellation} • {planet.distanceFromEarth.toFixed(1)} ly • Score: {(planet.habitabilityScore * 10).toFixed(0)}/100
-                      </div>
-                    </div>
-                  </button>
-                ))}
-                <div className="p-2 border-t border-white/10">
-                  <button
-                    onClick={clearSearch}
-                    className="w-full text-center text-xs text-gray-400 hover:text-white transition-colors py-1"
-                  >
-                    Clear search and show all planets
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            {/* Clear search button */}
-            {searchTerm && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-            
-            {/* Search Results Dropdown */}
-            {showSearchDropdown && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-lg border border-white/20 shadow-2xl z-50 max-h-80 overflow-y-auto">
-                <div className="p-2 border-b border-white/10">
-                  <div className="text-xs text-gray-400 px-2">
-                    Found {searchResults.length} planets matching "{searchTerm}"
-                  </div>
-                </div>
-                {searchResults.map((planet, index) => (
-                  <button
-                    key={`search-${planet.id}-${index}`}
-                    onClick={() => handleSearchSelect(planet)}
-                    className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0 flex items-center gap-3"
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getTemperatureColor(planet.temperature)}`} />
-                    <div className="flex-1">
-                      <div className="text-white font-medium">{planet.name}</div>
-                      <div className="text-gray-400 text-sm">
-                        {planet.constellation} • {planet.distanceFromEarth.toFixed(1)} ly • Score: {(planet.habitabilityScore * 10).toFixed(0)}/100
-                      </div>
-                    </div>
-                  </button>
-                ))}
-                <div className="p-2 border-t border-white/10">
-                  <button
-                    onClick={clearSearch}
-                    className="w-full text-center text-xs text-gray-400 hover:text-white transition-colors py-1"
-                  >
-                    Clear search and show all planets
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            {/* Clear search button */}
-            {searchTerm && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
             
             {/* Search Results Dropdown */}
             {showSearchDropdown && searchResults.length > 0 && (
@@ -834,7 +406,7 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
                 <option value="all" className="bg-gray-800">All Planets ({allPlanets.length.toLocaleString()})</option>
                 <option value="high-habitability" className="bg-gray-800">High Habitability (Score ≥ 5)</option>
                 <option value="with-biosignatures" className="bg-gray-800">With Biosignatures</option>
-                <option value="nearby" className="bg-gray-800">Nearby (&lt;100 ly)</option>
+                <option value="nearby" className="bg-gray-800">Nearby (<100 ly)</option>
                 <option value="recent" className="bg-gray-800">Recent Discoveries (≥2010)</option>
                 <option value="earth-like" className="bg-gray-800">Earth-like Candidates</option>
                 <option value="super-earth" className="bg-gray-800">Super-Earths</option>
@@ -866,7 +438,7 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
             <div className="text-2xl font-bold text-purple-400">
               {allPlanets.filter(p => p.distanceFromEarth < 100).length}
             </div>
-            <div className="text-gray-400 text-sm">Nearby (&lt;100ly)</div>
+            <div className="text-gray-400 text-sm">Nearby (<100ly)</div>
           </div>
           <div className="bg-gradient-to-br from-red-900/30 to-pink-900/30 rounded-lg p-4 border border-red-500/30">
             <div className="text-2xl font-bold text-red-400">
