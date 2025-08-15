@@ -19,6 +19,14 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
   const [sortBy, setSortBy] = useState('habitability');
   const [filterBy, setFilterBy] = useState('all');
   const [loadingProgress, setLoadingProgress] = useState('');
+  const [searchResults, setSearchResults] = useState<Exoplanet[]>([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [searchResults, setSearchResults] = useState<Exoplanet[]>([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [searchResults, setSearchResults] = useState<Exoplanet[]>([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [searchResults, setSearchResults] = useState<Exoplanet[]>([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const planetsPerPage = 100; // Show more planets per page
 
   // Convert Exoplanet to ExtendedExoplanet format
@@ -105,10 +113,242 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
     loadAllCSVPlanets();
   }, []);
 
+  // Handle search with real-time results
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    
+    if (term.length >= 2) {
+      // Perform fuzzy search on planet names
+      const results = allPlanets.filter(planet => {
+        const planetName = planet.name.toLowerCase();
+        const searchLower = term.toLowerCase();
+        
+        // Exact match gets highest priority
+        if (planetName.includes(searchLower)) return true;
+        
+        // Check individual words
+        const searchWords = searchLower.split(' ');
+        const planetWords = planetName.split(' ');
+        
+        return searchWords.some(searchWord => 
+          planetWords.some(planetWord => 
+            planetWord.includes(searchWord) || searchWord.includes(planetWord)
+          )
+        );
+      }).slice(0, 10); // Show top 10 results
+      
+      setSearchResults(results);
+      setShowSearchDropdown(results.length > 0);
+    } else {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+    }
+  };
+
+  // Handle planet selection from search dropdown
+  const handleSearchSelect = (planet: Exoplanet) => {
+    setSearchTerm(planet.name);
+    setShowSearchDropdown(false);
+    setSearchResults([]);
+    
+    // Filter to show only this planet
+    setFilteredPlanets([planet]);
+    setCurrentPage(1);
+  };
+
+  // Clear search and show all planets
+  const clearSearch = () => {
+    setSearchTerm('');
+    setShowSearchDropdown(false);
+    setSearchResults([]);
+    setFilteredPlanets(allPlanets);
+    setCurrentPage(1);
+  };
+  // Handle search with real-time results
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    
+    if (term.length >= 2) {
+      // Perform fuzzy search on planet names
+      const results = allPlanets.filter(planet => {
+        const planetName = planet.name.toLowerCase();
+        const searchLower = term.toLowerCase();
+        
+        // Exact match gets highest priority
+        if (planetName.includes(searchLower)) return true;
+        
+        // Check individual words
+        const searchWords = searchLower.split(' ');
+        const planetWords = planetName.split(' ');
+        
+        return searchWords.some(searchWord => 
+          planetWords.some(planetWord => 
+            planetWord.includes(searchWord) || searchWord.includes(planetWord)
+          )
+        );
+      }).slice(0, 10); // Show top 10 results
+      
+      setSearchResults(results);
+      setShowSearchDropdown(results.length > 0);
+    } else {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+    }
+  };
+
+  // Handle planet selection from search dropdown
+  const handleSearchSelect = (planet: Exoplanet) => {
+    setSearchTerm(planet.name);
+    setShowSearchDropdown(false);
+    setSearchResults([]);
+    
+    // Filter to show only this planet
+    setFilteredPlanets([planet]);
+    setCurrentPage(1);
+  };
+
+  // Clear search and show all planets
+  const clearSearch = () => {
+    setSearchTerm('');
+    setShowSearchDropdown(false);
+    setSearchResults([]);
+    setFilteredPlanets(allPlanets);
+    setCurrentPage(1);
+  };
+  // Handle search with real-time results
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    
+    if (term.length >= 2) {
+      // Perform fuzzy search on planet names
+      const results = allPlanets.filter(planet => {
+        const planetName = planet.name.toLowerCase();
+        const searchLower = term.toLowerCase();
+        
+        // Exact match gets highest priority
+        if (planetName.includes(searchLower)) return true;
+        
+        // Check individual words
+        const searchWords = searchLower.split(' ');
+        const planetWords = planetName.split(' ');
+        
+        return searchWords.some(searchWord => 
+          planetWords.some(planetWord => 
+            planetWord.includes(searchWord) || searchWord.includes(planetWord)
+          )
+        );
+      }).slice(0, 10); // Show top 10 results
+      
+      setSearchResults(results);
+      setShowSearchDropdown(results.length > 0);
+    } else {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+    }
+  };
+
+  // Handle planet selection from search dropdown
+  const handleSearchSelect = (planet: Exoplanet) => {
+    setSearchTerm(planet.name);
+    setShowSearchDropdown(false);
+    setSearchResults([]);
+    
+    // Filter to show only this planet
+    setFilteredPlanets([planet]);
+    setCurrentPage(1);
+  };
+
+  // Clear search and show all planets
+  const clearSearch = () => {
+    setSearchTerm('');
+    setShowSearchDropdown(false);
+    setSearchResults([]);
+    setFilteredPlanets(allPlanets);
+    setCurrentPage(1);
+  };
+  // Handle search with real-time results
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    
+    if (term.length >= 2) {
+      // Perform fuzzy search on planet names
+      const results = allPlanets.filter(planet => {
+        const planetName = planet.name.toLowerCase();
+        const searchLower = term.toLowerCase();
+        
+        // Exact match gets highest priority
+        if (planetName.includes(searchLower)) return true;
+        
+        // Check individual words
+        const searchWords = searchLower.split(' ');
+        const planetWords = planetName.split(' ');
+        
+        return searchWords.some(searchWord => 
+          planetWords.some(planetWord => 
+            planetWord.includes(searchWord) || searchWord.includes(planetWord)
+          )
+        );
+      }).slice(0, 10); // Show top 10 results
+      
+      setSearchResults(results);
+      setShowSearchDropdown(results.length > 0);
+    } else {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+    }
+  };
+
+  // Handle planet selection from search dropdown
+  const handleSearchSelect = (planet: Exoplanet) => {
+    setSearchTerm(planet.name);
+    setShowSearchDropdown(false);
+    setSearchResults([]);
+    
+    // Filter to show only this planet
+    setFilteredPlanets([planet]);
+    setCurrentPage(1);
+  };
+
+  // Clear search and show all planets
+  const clearSearch = () => {
+    setSearchTerm('');
+    setShowSearchDropdown(false);
+    setSearchResults([]);
+    setFilteredPlanets(allPlanets);
+    setCurrentPage(1);
+  };
   // Filter and sort planets
   useEffect(() => {
+    // If we have a specific search selection, don't apply other filters
+    if (searchTerm && filteredPlanets.length === 1) {
+      return;
+    }
+    
+    // If we have a specific search selection, don't apply other filters
+    if (searchTerm && filteredPlanets.length === 1) {
+      return;
+    }
+    
+    // If we have a specific search selection, don't apply other filters
+    if (searchTerm && filteredPlanets.length === 1) {
+      return;
+    }
+    
+    // If we have a specific search selection, don't apply other filters
+    if (searchTerm && filteredPlanets.length === 1) {
+      return;
+    }
+    
     let filtered = allPlanets.filter(planet => {
-      const matchesSearch = planet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      // Only apply search if no specific planet is selected
+      const matchesSearch = !searchTerm || 
+      // Only apply search if no specific planet is selected
+      const matchesSearch = !searchTerm || 
+      // Only apply search if no specific planet is selected
+      const matchesSearch = !searchTerm || 
+      // Only apply search if no specific planet is selected
+      const matchesSearch = !searchTerm || 
+                           planet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            planet.constellation.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            planet.starType.toLowerCase().includes(searchTerm.toLowerCase());
       
@@ -363,11 +603,207 @@ export const AllCSVPlanets: React.FC<AllCSVPlanetsProps> = ({ onPlanetSelect }) 
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Let's go through some planets"
+              placeholder="Search planets (try 'proxima', 'kepler', 'trappist')..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onFocus={() => {
+                if (searchResults.length > 0) {
+                  setShowSearchDropdown(true);
+                }
+              }}
+              onFocus={() => {
+                if (searchResults.length > 0) {
+                  setShowSearchDropdown(true);
+                }
+              }}
+              onFocus={() => {
+                if (searchResults.length > 0) {
+                  setShowSearchDropdown(true);
+                }
+              }}
+              onFocus={() => {
+                if (searchResults.length > 0) {
+                  setShowSearchDropdown(true);
+                }
+              }}
               className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent text-lg"
             />
+            
+            {/* Search Results Dropdown */}
+            {showSearchDropdown && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-lg border border-white/20 shadow-2xl z-50 max-h-80 overflow-y-auto">
+                <div className="p-2 border-b border-white/10">
+                  <div className="text-xs text-gray-400 px-2">
+                    Found {searchResults.length} planets matching "{searchTerm}"
+                  </div>
+                </div>
+                {searchResults.map((planet, index) => (
+                  <button
+                    key={`search-${planet.id}-${index}`}
+                    onClick={() => handleSearchSelect(planet)}
+                    className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0 flex items-center gap-3"
+                  >
+                    <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getTemperatureColor(planet.temperature)}`} />
+                    <div className="flex-1">
+                      <div className="text-white font-medium">{planet.name}</div>
+                      <div className="text-gray-400 text-sm">
+                        {planet.constellation} • {planet.distanceFromEarth.toFixed(1)} ly • Score: {(planet.habitabilityScore * 10).toFixed(0)}/100
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                <div className="p-2 border-t border-white/10">
+                  <button
+                    onClick={clearSearch}
+                    className="w-full text-center text-xs text-gray-400 hover:text-white transition-colors py-1"
+                  >
+                    Clear search and show all planets
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Clear search button */}
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+            
+            {/* Search Results Dropdown */}
+            {showSearchDropdown && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-lg border border-white/20 shadow-2xl z-50 max-h-80 overflow-y-auto">
+                <div className="p-2 border-b border-white/10">
+                  <div className="text-xs text-gray-400 px-2">
+                    Found {searchResults.length} planets matching "{searchTerm}"
+                  </div>
+                </div>
+                {searchResults.map((planet, index) => (
+                  <button
+                    key={`search-${planet.id}-${index}`}
+                    onClick={() => handleSearchSelect(planet)}
+                    className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0 flex items-center gap-3"
+                  >
+                    <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getTemperatureColor(planet.temperature)}`} />
+                    <div className="flex-1">
+                      <div className="text-white font-medium">{planet.name}</div>
+                      <div className="text-gray-400 text-sm">
+                        {planet.constellation} • {planet.distanceFromEarth.toFixed(1)} ly • Score: {(planet.habitabilityScore * 10).toFixed(0)}/100
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                <div className="p-2 border-t border-white/10">
+                  <button
+                    onClick={clearSearch}
+                    className="w-full text-center text-xs text-gray-400 hover:text-white transition-colors py-1"
+                  >
+                    Clear search and show all planets
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Clear search button */}
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+            
+            {/* Search Results Dropdown */}
+            {showSearchDropdown && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-lg border border-white/20 shadow-2xl z-50 max-h-80 overflow-y-auto">
+                <div className="p-2 border-b border-white/10">
+                  <div className="text-xs text-gray-400 px-2">
+                    Found {searchResults.length} planets matching "{searchTerm}"
+                  </div>
+                </div>
+                {searchResults.map((planet, index) => (
+                  <button
+                    key={`search-${planet.id}-${index}`}
+                    onClick={() => handleSearchSelect(planet)}
+                    className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0 flex items-center gap-3"
+                  >
+                    <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getTemperatureColor(planet.temperature)}`} />
+                    <div className="flex-1">
+                      <div className="text-white font-medium">{planet.name}</div>
+                      <div className="text-gray-400 text-sm">
+                        {planet.constellation} • {planet.distanceFromEarth.toFixed(1)} ly • Score: {(planet.habitabilityScore * 10).toFixed(0)}/100
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                <div className="p-2 border-t border-white/10">
+                  <button
+                    onClick={clearSearch}
+                    className="w-full text-center text-xs text-gray-400 hover:text-white transition-colors py-1"
+                  >
+                    Clear search and show all planets
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Clear search button */}
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+            
+            {/* Search Results Dropdown */}
+            {showSearchDropdown && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-lg border border-white/20 shadow-2xl z-50 max-h-80 overflow-y-auto">
+                <div className="p-2 border-b border-white/10">
+                  <div className="text-xs text-gray-400 px-2">
+                    Found {searchResults.length} planets matching "{searchTerm}"
+                  </div>
+                </div>
+                {searchResults.map((planet, index) => (
+                  <button
+                    key={`search-${planet.id}-${index}`}
+                    onClick={() => handleSearchSelect(planet)}
+                    className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0 flex items-center gap-3"
+                  >
+                    <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getTemperatureColor(planet.temperature)}`} />
+                    <div className="flex-1">
+                      <div className="text-white font-medium">{planet.name}</div>
+                      <div className="text-gray-400 text-sm">
+                        {planet.constellation} • {planet.distanceFromEarth.toFixed(1)} ly • Score: {(planet.habitabilityScore * 10).toFixed(0)}/100
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                <div className="p-2 border-t border-white/10">
+                  <button
+                    onClick={clearSearch}
+                    className="w-full text-center text-xs text-gray-400 hover:text-white transition-colors py-1"
+                  >
+                    Clear search and show all planets
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Clear search button */}
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
           
           <div className="flex gap-3">
