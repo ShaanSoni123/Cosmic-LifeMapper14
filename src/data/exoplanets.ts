@@ -44,6 +44,20 @@ export const exoplanets: Exoplanet[] = [
   },
   {
     id: "proxima-centauri-b-enhanced",
+    name: "Proxima Centauri b Enhanced",
+    distanceFromEarth: 4.24,
+    orbitalPeriod: 11.2,
+    temperature: 234,
+    starType: "M5.5V",
+    biosignatures: ["Atmospheric water vapor confirmed", "Methane signatures", "Possible oxygen traces", "Magnetic field protection"],
+    radius: 1.1,
+    mass: 1.3,
+    discoveryYear: 2016,
+    constellation: "Centaurus",
+    habitabilityScore: 7.2
+  },
+  {
+    id: "proxima-centauri-b-enhanced",
     name: "Proxima Centauri b",
     distanceFromEarth: 4.24,
     orbitalPeriod: 11.2,
