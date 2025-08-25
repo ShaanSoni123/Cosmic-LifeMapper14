@@ -1,0 +1,37 @@
+================================================================================
+NASA EXOPLANET DATA INGESTION SUMMARY REPORT
+================================================================================
+Generated: 2025-08-25 13:09:23
+
+DATA OVERVIEW:
+  Total records processed: 5983
+  Valid records: 5983
+  Invalid records: 0
+  Success rate: 100.0%
+
+COLUMN STATISTICS:
+  planet_name: 5983 non-null values, 5983 unique values
+  host_name: 5983 non-null values, 4475 unique values
+  disc_method: 5983 non-null values, 11 unique values
+  disc_year: 5983 non-null values, range [1992.000, 2025.000], mean 2016.753
+  pl_orbper_days: 5682 non-null values, range [0.091, 402000000.000], mean 75292.808
+  pl_rad_rearth: 5961 non-null values, range [0.310, 77.342], mean 5.803
+  pl_mass_mearth: 2187 non-null values, range [0.020, 9344.155], mean 771.436
+  st_teff_k: 5719 non-null values, range [415.000, 57000.000], mean 5412.470
+  st_rad_rsun: 5697 non-null values, range [0.011, 88.475], mean 1.513
+  st_mass_msun: 5976 non-null values, range [0.009, 10.940], mean 0.943
+  pl_mass_mjup: 2187 non-null values, range [0.000, 29.400], mean 2.427
+  pl_rad_rjup: 5961 non-null values, range [0.028, 6.900], mean 0.518
+  habitable_zone_flag: 5983 non-null values, 4 unique values
+  esi: 2173 non-null values, range [0.000, 0.972], mean 0.020
+  has_mass: 5983 non-null values, 2 unique values
+  has_radius: 5983 non-null values, 2 unique values
+  has_stellar_data: 5983 non-null values, 2 unique values
+
+DATA QUALITY METRICS:
+  Mass data coverage: 36.6%
+  Radius data coverage: 99.6%
+  Stellar data coverage: 95.1%
+  ESI coverage: 36.3%
+
+================================================================================

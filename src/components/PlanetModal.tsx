@@ -68,7 +68,9 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
             
             <div>
               <h2 className="text-3xl font-bold text-white mb-2">{planet.name}</h2>
-              <p className="text-gray-300 mb-4">Located in the {planet.constellation} constellation</p>
+              <p className="text-gray-300 mb-4">
+                {planet.discoveryMethod ? `Discovered via ${planet.discoveryMethod}` : 'Exoplanet'} • {planet.discoveryYear}
+              </p>
               
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -133,10 +135,10 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <Globe className="w-5 h-5 text-blue-400" />
-                  <span className="text-gray-300">Distance from Earth</span>
+                  <Clock className="w-5 h-5 text-green-400" />
+                  <span className="text-gray-300">Orbital Period</span>
                 </div>
-                <span className="text-white font-medium">{planet.distanceFromEarth} light years</span>
+                <span className="text-white font-medium">{planet.orbitalPeriod > 0 ? `${planet.orbitalPeriod.toFixed(1)} days` : 'Unknown'}</span>
               </div>
               
               <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
@@ -178,6 +180,14 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                 </div>
                 <span className="text-white font-medium">{safeSurfaceGravity.toFixed(2)} Earth g</span>
               </div>
+              
+              <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Star className="w-5 h-5 text-yellow-400" />
+                  <span className="text-gray-300">Stellar Temperature</span>
+                </div>
+                <span className="text-white font-medium">{planet.stellarTemperature > 0 ? `${planet.stellarTemperature.toFixed(0)}K` : 'Unknown'}</span>
+              </div>
             </div>
           </div>
 
@@ -208,6 +218,14 @@ export const PlanetModal: React.FC<PlanetModalProps> = ({ planet, isOpen, onClos
                   <span className="text-gray-300">Cluster Category</span>
                 </div>
                 <span className="text-white font-medium text-sm">{safeClusterLabel}</span>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Info className="w-5 h-5 text-blue-400" />
+                  <span className="text-gray-300">Discovery Method</span>
+                </div>
+                <span className="text-white font-medium text-sm capitalize">{planet.discoveryMethod || 'Unknown'}</span>
               </div>
             </div>
           </div>

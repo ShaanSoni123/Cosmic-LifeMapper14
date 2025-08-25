@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { X, Search, ArrowRight, Globe, Thermometer, Clock, Star, Ruler, Weight, Calendar, Target, Activity, Droplets, Shield, Zap, ChevronDown } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { X, Search, ArrowRight, Globe, Thermometer, Clock, Star, Ruler, Weight, Calendar, Target, Activity, Droplets, Shield, Zap, ChevronDown, Info } from 'lucide-react';
 import { ExtendedExoplanet } from '../utils/exoplanetAnalysis';
-import { HabitabilityBar } from './HabitabilityBar';
+import { generatePlanetBiosignatures, generateBiosignatureReport } from '../utils/biosignatureAnalysis';
+import { expandConstellationName, getConstellationInfo } from '../utils/constellationExpander';
 
 interface PlanetComparisonProps {
   planets: ExtendedExoplanet[];
@@ -12,27 +13,9 @@ interface PlanetComparisonProps {
 export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isOpen, onClose }) => {
   const [selectedPlanet1, setSelectedPlanet1] = useState<ExtendedExoplanet | null>(null);
   const [selectedPlanet2, setSelectedPlanet2] = useState<ExtendedExoplanet | null>(null);
-  const [searchTerm1, setSearchTerm1] = useState('');
-  const [searchTerm2, setSearchTerm2] = useState('');
-  const [showDropdown1, setShowDropdown1] = useState(false);
-  const [showDropdown2, setShowDropdown2] = useState(false);
 
-  // Filter planets for search
-  const filteredPlanets1 = useMemo(() => {
-    if (!searchTerm1) return planets.slice(0, 10);
-    return planets.filter(planet =>
-      planet.name.toLowerCase().includes(searchTerm1.toLowerCase()) ||
-      planet.constellation.toLowerCase().includes(searchTerm1.toLowerCase())
-    ).slice(0, 10);
-  }, [planets, searchTerm1]);
 
-  const filteredPlanets2 = useMemo(() => {
-    if (!searchTerm2) return planets.slice(0, 10);
-    return planets.filter(planet =>
-      planet.name.toLowerCase().includes(searchTerm2.toLowerCase()) ||
-      planet.constellation.toLowerCase().includes(searchTerm2.toLowerCase())
-    ).slice(0, 10);
-  }, [planets, searchTerm2]);
+
 
   const getTemperatureColor = (temp: number) => {
     if (temp < 200) return 'from-blue-500 to-cyan-300';
@@ -47,9 +30,49 @@ export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isO
     const p1 = selectedPlanet1;
     const p2 = selectedPlanet2;
 
-    // Compare habitability scores
-    const habitabilityDiff = p1.habitabilityScore - p2.habitabilityScore;
-    const tempDiff = Math.abs(p1.temperature - 288) - Math.abs(p2.temperature - 288); // 288K is Earth-like
+    // Calculate real biosignature scores using the same function as BiosignaturePanel
+    let p1BiosignatureScore = 0;
+    let p2BiosignatureScore = 0;
+    
+    try {
+      const p1BiosignatureInput = generatePlanetBiosignatures({
+        temperature: p1.temperature,
+        radius: p1.radius,
+        mass: p1.mass,
+        starType: 'G',
+        inHabitableZone: p1.inHabitableZone,
+        habitabilityScore: p1.habitabilityScore
+      });
+      const p1BiosignatureReport = generateBiosignatureReport(p1BiosignatureInput);
+      p1BiosignatureScore = p1BiosignatureReport['Habitability Score'] || 0;
+    } catch (error) {
+      console.error('Error calculating p1 biosignature score:', error);
+      p1BiosignatureScore = p1.biosignatures.length > 0 ? 
+        Math.min(p1.biosignatures.length * 25, 100) : 
+        Math.round(p1.habitabilityScore * 10);
+    }
+    
+    try {
+      const p2BiosignatureInput = generatePlanetBiosignatures({
+        temperature: p2.temperature,
+        radius: p2.radius,
+        mass: p2.mass,
+        starType: 'G',
+        inHabitableZone: p2.inHabitableZone,
+        habitabilityScore: p2.habitabilityScore
+      });
+      const p2BiosignatureReport = generateBiosignatureReport(p2BiosignatureInput);
+      p2BiosignatureScore = p2BiosignatureReport['Habitability Score'] || 0;
+    } catch (error) {
+      console.error('Error calculating p2 biosignature score:', error);
+      p2BiosignatureScore = p2.biosignatures.length > 0 ? 
+        Math.min(p2.biosignatures.length * 25, 100) : 
+        Math.round(p2.habitabilityScore * 10);
+    }
+
+    // Compare biosignature scores
+    const biosignatureDiff = p1BiosignatureScore - p2BiosignatureScore;
+    const tempDiff = Math.abs(p1.temperature - 5778) - Math.abs(p2.temperature - 5778); // 5778K is Sun-like
     const sizeDiff = Math.abs(p1.radius - 1.0) - Math.abs(p2.radius - 1.0); // 1.0 is Earth-like
     const massDiff = Math.abs(p1.mass - 1.0) - Math.abs(p2.mass - 1.0); // 1.0 is Earth-like
 
@@ -57,19 +80,19 @@ export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isO
     let reasons = [];
     let verdict = '';
 
-    if (Math.abs(habitabilityDiff) < 5) {
+    if (Math.abs(biosignatureDiff) < 5) {
       winner = 'tie';
-      verdict = 'Both planets show similar habitability potential';
-    } else if (habitabilityDiff > 0) {
+      verdict = 'Both planets show similar biosignature potential';
+    } else if (biosignatureDiff > 0) {
       winner = p1.name;
-      reasons.push('higher habitability score');
+      reasons.push('higher biosignature score');
     } else {
       winner = p2.name;
-      reasons.push('higher habitability score');
+      reasons.push('higher biosignature score');
     }
 
     // Add specific reasons
-    if (tempDiff < -10) reasons.push('more Earth-like temperature');
+    if (tempDiff < -500) reasons.push('more Sun-like stellar temperature');
     if (sizeDiff < -0.3) reasons.push('more Earth-like size');
     if (massDiff < -0.5) reasons.push('more Earth-like mass');
 
@@ -81,83 +104,123 @@ export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isO
       reasons.push('located in habitable zone');
     }
 
-    if (p1.biosignatures.length > p2.biosignatures.length) {
+    // Compare orbital periods (closer to Earth's 365 days is better)
+    const p1OrbitalDiff = Math.abs(p1.orbitalPeriod - 365.25);
+    const p2OrbitalDiff = Math.abs(p2.orbitalPeriod - 365.25);
+    if (p1OrbitalDiff < p2OrbitalDiff - 30) {
       if (winner !== p2.name) winner = p1.name;
-      reasons.push('more biosignatures detected');
-    } else if (p2.biosignatures.length > p1.biosignatures.length) {
+      reasons.push('more Earth-like orbital period');
+    } else if (p2OrbitalDiff < p1OrbitalDiff - 30) {
       if (winner !== p1.name) winner = p2.name;
-      reasons.push('more biosignatures detected');
+      reasons.push('more Earth-like orbital period');
     }
 
     if (winner === 'tie') {
-      verdict = `Both ${p1.name} and ${p2.name} show remarkably similar characteristics for potential habitability.`;
+      verdict = `Both ${p1.name} and ${p2.name} show remarkably similar characteristics for potential biosignatures.`;
     } else {
-      verdict = `${winner} appears more promising for potential habitability due to ${reasons.slice(0, 3).join(', ')}.`;
+      verdict = `${winner} appears more promising for potential biosignatures due to ${reasons.slice(0, 3).join(', ')}.`;
     }
 
     return { winner, verdict, reasons };
   };
 
-  const PlanetSelector: React.FC<{
-    selectedPlanet: ExtendedExoplanet | null;
-    onSelect: (planet: ExtendedExoplanet) => void;
-    searchTerm: string;
-    onSearchChange: (term: string) => void;
-    filteredPlanets: ExtendedExoplanet[];
-    showDropdown: boolean;
-    onToggleDropdown: (show: boolean) => void;
+  // Simple, clean search component - no complex state management
+  const SimpleSearchBox: React.FC<{
     placeholder: string;
-  }> = ({
-    selectedPlanet,
-    onSelect,
-    searchTerm,
-    onSearchChange,
-    filteredPlanets,
-    showDropdown,
-    onToggleDropdown,
-    placeholder
-  }) => (
-    <div className="relative">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-        <input
-          type="text"
-          placeholder={placeholder}
-          value={selectedPlanet ? selectedPlanet.name : searchTerm}
-          onChange={(e) => {
-            onSearchChange(e.target.value);
-            onToggleDropdown(true);
-            if (selectedPlanet) onSelect(null as any);
-          }}
-          onFocus={() => onToggleDropdown(true)}
-          className="w-full pl-12 pr-12 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent text-lg"
-        />
-        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-      </div>
+    onSelect: (planet: ExtendedExoplanet) => void;
+    planets: ExtendedExoplanet[];
+  }> = ({ placeholder, onSelect, planets }) => {
+    const [inputValue, setInputValue] = React.useState('');
+    const [isOpen, setIsOpen] = React.useState(false);
+    const inputRef = React.useRef<HTMLInputElement>(null);
 
-      {showDropdown && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-lg border border-white/20 shadow-2xl z-50 max-h-80 overflow-y-auto">
-          {filteredPlanets.map((planet) => (
+    // Simple filtering - no complex state
+    const filteredResults = React.useMemo(() => {
+      if (!inputValue.trim()) return [];
+      
+      const search = inputValue.toLowerCase();
+      return planets.filter(planet => 
+        planet.name.toLowerCase().includes(search) ||
+        planet.constellation.toLowerCase().includes(search) ||
+        planet.discoveryYear.toString().includes(search) ||
+        planet.habitabilityScore.toString().includes(search)
+      ).slice(0, 10);
+    }, [inputValue, planets]);
+
+    // Simple handlers - no complex logic
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setInputValue(e.target.value);
+      setIsOpen(e.target.value.length > 0);
+    };
+
+    const handleSelect = (planet: ExtendedExoplanet) => {
+      onSelect(planet);
+      setInputValue('');
+      setIsOpen(false);
+      inputRef.current?.focus();
+    };
+
+    const handleClear = () => {
+      setInputValue('');
+      setIsOpen(false);
+      inputRef.current?.focus();
+    };
+
+    return (
+      <div className="relative">
+        {/* Simple Input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={placeholder}
+            value={inputValue}
+            onChange={handleInputChange}
+            onFocus={() => setIsOpen(inputValue.length > 0)}
+            className="w-full pl-10 pr-10 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-lg"
+          />
+          
+          {inputValue && (
             <button
-              key={planet.id}
-              onClick={() => {
-                onSelect(planet);
-                onToggleDropdown(false);
-                onSearchChange('');
-              }}
-              className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors border-b border-white/10 last:border-b-0 flex items-center gap-3"
+              onClick={handleClear}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
             >
-              <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getTemperatureColor(planet.temperature)}`} />
-              <div className="flex-1">
-                <div className="text-white font-medium">{planet.name}</div>
-                <div className="text-gray-400 text-sm">{planet.constellation} • {planet.habitabilityScore}/100</div>
-              </div>
+              <X className="w-4 h-4" />
             </button>
-          ))}
+          )}
         </div>
-      )}
-    </div>
-  );
+
+        {/* Simple Dropdown */}
+        {isOpen && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-white/20 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+            {filteredResults.length > 0 ? (
+              filteredResults.map(planet => (
+                <button
+                  key={planet.id}
+                  onClick={() => handleSelect(planet)}
+                  className="w-full px-4 py-3 text-left hover:bg-white/10 border-b border-white/10 last:border-b-0 flex items-center gap-3"
+                >
+                  <div className={`w-3 h-3 rounded-full ${getTemperatureColor(planet.temperature)}`} />
+                  <div>
+                    <div className="text-white font-medium">{planet.name}</div>
+                    <div className="text-gray-400 text-sm">
+                      {planet.constellation} • {planet.discoveryYear} • {planet.habitabilityScore}/100
+                    </div>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-6 text-center text-gray-400">
+                No planets found for "{inputValue}"
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const PlanetCard: React.FC<{ planet: ExtendedExoplanet; side: 'left' | 'right' }> = ({ planet, side }) => (
     <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-xl">
@@ -176,16 +239,28 @@ export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isO
         <div className="absolute -inset-12 border border-white/5 rounded-full animate-spin-reverse" />
       </div>
 
-      <h3 className="text-2xl font-bold text-white mb-4 text-center">{planet.name}</h3>
+      <h3 className="text-2xl font-bold text-white mb-4 text-center">{expandConstellationName(planet.name)}</h3>
+      
+      {/* Constellation Info */}
+      {getConstellationInfo(planet.name) && (
+        <div className="text-center mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 rounded-full border border-blue-500/30">
+            <Info className="w-3 h-3 text-blue-400" />
+            <span className="text-xs text-blue-400 font-medium">
+              {getConstellationInfo(planet.name)?.fullName}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Key Stats */}
       <div className="space-y-4 mb-6">
         <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
           <div className="flex items-center gap-3">
-            <Globe className="w-5 h-5 text-blue-400" />
-            <span className="text-gray-300">Distance</span>
+            <Clock className="w-5 h-5 text-green-400" />
+            <span className="text-gray-300">Orbital Period</span>
           </div>
-          <span className="text-white font-medium">{planet.distanceFromEarth.toFixed(1)} ly</span>
+          <span className="text-white font-medium">{planet.orbitalPeriod > 0 ? `${planet.orbitalPeriod.toFixed(1)} days` : 'Unknown'}</span>
         </div>
 
         <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
@@ -212,26 +287,98 @@ export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isO
           <span className="text-white font-medium">{planet.mass.toFixed(1)}⊕</span>
         </div>
 
-        <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-          <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-green-400" />
-            <span className="text-gray-300">Orbital Period</span>
-          </div>
-          <span className="text-white font-medium">{planet.orbitalPeriod.toFixed(1)} days</span>
-        </div>
+
 
         <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
           <div className="flex items-center gap-3">
             <Star className="w-5 h-5 text-yellow-400" />
-            <span className="text-gray-300">Star Type</span>
+            <span className="text-gray-300">Stellar Temperature</span>
           </div>
-          <span className="text-white font-medium">{planet.starType}</span>
+          <span className="text-white font-medium">{planet.temperature > 0 ? `${planet.temperature.toFixed(0)}K` : 'Unknown'}</span>
         </div>
       </div>
 
-      {/* Habitability Score */}
+      {/* Biosignature Score */}
       <div className="mb-6">
-        <HabitabilityBar score={planet.habitabilityScore} size="large" />
+        <div className="bg-gradient-to-br from-amber-900/30 to-yellow-900/30 rounded-xl p-4 border border-amber-500/30">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-yellow-300 mb-2">
+              {(() => {
+                try {
+                  // Use the EXACT same calculation as BiosignaturePanel
+                  const biosignatureInput = generatePlanetBiosignatures({
+                    temperature: planet.temperature,
+                    radius: planet.radius,
+                    mass: planet.mass,
+                    starType: 'G', // Default to G-type star
+                    inHabitableZone: planet.inHabitableZone,
+                    habitabilityScore: planet.habitabilityScore
+                  });
+                  const biosignatureReport = generateBiosignatureReport(biosignatureInput);
+                  return biosignatureReport['Habitability Score'].toFixed(1);
+                } catch (error) {
+                  console.error('Biosignature calculation error:', error);
+                  return planet.biosignatures.length > 0 ? 
+                    Math.min(planet.biosignatures.length * 25, 100) : 
+                    Math.round(planet.habitabilityScore * 10);
+                }
+              })()}/100
+            </div>
+            <div className="text-white font-medium mb-2">Biosignature Score</div>
+            
+            {/* Progress Bar */}
+            <div className="w-full bg-white/20 rounded-full h-2 mb-3">
+              <div
+                className="h-2 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full transition-all duration-500"
+                style={{ 
+                  width: `${(() => {
+                    try {
+                      const biosignatureInput = generatePlanetBiosignatures({
+                        temperature: planet.temperature,
+                        radius: planet.radius,
+                        mass: planet.mass,
+                        starType: 'G',
+                        inHabitableZone: planet.inHabitableZone,
+                        habitabilityScore: planet.habitabilityScore
+                      });
+                      const biosignatureReport = generateBiosignatureReport(biosignatureInput);
+                      return biosignatureReport['Habitability Score'] || 0;
+                    } catch (error) {
+                      return planet.biosignatures.length > 0 ? 
+                        Math.min(planet.biosignatures.length * 25, 100) : 
+                        Math.round(planet.habitabilityScore * 10);
+                    }
+                  })()}%` 
+                }}
+              />
+            </div>
+            
+            <div className="text-amber-200 text-sm">
+              {(() => {
+                try {
+                  const biosignatureInput = generatePlanetBiosignatures({
+                    temperature: planet.temperature,
+                    radius: planet.radius,
+                    mass: planet.mass,
+                    starType: 'G',
+                    inHabitableZone: planet.inHabitableZone,
+                    habitabilityScore: planet.habitabilityScore
+                  });
+                  const biosignatureReport = generateBiosignatureReport(biosignatureInput);
+                  const score = biosignatureReport['Habitability Score'];
+                  if (score >= 80) return 'Excellent conditions for life';
+                  else if (score >= 60) return 'Good potential for life';
+                  else if (score >= 40) return 'Marginal habitability';
+                  else return 'Challenging conditions for life';
+                } catch (error) {
+                  return planet.biosignatures.length > 0 ? 
+                    `${planet.biosignatures.length} biosignature${planet.biosignatures.length !== 1 ? 's' : ''} detected` :
+                    'Based on habitability analysis';
+                }
+              })()}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Advanced Stats */}
@@ -291,7 +438,7 @@ export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isO
           <Calendar className="w-4 h-4" />
           <span>Discovered {planet.discoveryYear}</span>
         </div>
-        <div className="text-gray-500 text-xs mt-1">{planet.constellation} constellation</div>
+        <div className="text-gray-500 text-xs mt-1">{planet.constellation ? `in ${planet.constellation}` : 'Exoplanet'}</div>
       </div>
     </div>
   );
@@ -323,29 +470,19 @@ export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isO
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="block text-white font-semibold mb-3">Select First Planet</label>
-              <PlanetSelector
-                selectedPlanet={selectedPlanet1}
-                onSelect={setSelectedPlanet1}
-                searchTerm={searchTerm1}
-                onSearchChange={setSearchTerm1}
-                filteredPlanets={filteredPlanets1}
-                showDropdown={showDropdown1}
-                onToggleDropdown={setShowDropdown1}
+              <SimpleSearchBox
                 placeholder="Search for first planet..."
+                onSelect={setSelectedPlanet1}
+                planets={planets}
               />
             </div>
             
             <div>
               <label className="block text-white font-semibold mb-3">Select Second Planet</label>
-              <PlanetSelector
-                selectedPlanet={selectedPlanet2}
-                onSelect={setSelectedPlanet2}
-                searchTerm={searchTerm2}
-                onSearchChange={setSearchTerm2}
-                filteredPlanets={filteredPlanets2}
-                showDropdown={showDropdown2}
-                onToggleDropdown={setShowDropdown2}
+              <SimpleSearchBox
                 placeholder="Search for second planet..."
+                onSelect={setSelectedPlanet2}
+                planets={planets}
               />
             </div>
           </div>
@@ -401,19 +538,19 @@ export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isO
                   <div className="bg-white/5 rounded-lg p-4">
                     <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
                       <Thermometer className="w-4 h-4 text-red-400" />
-                      Temperature Analysis
+                      Stellar Temperature
                     </h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-400">{selectedPlanet1.name}:</span>
-                        <span className="text-white">{selectedPlanet1.temperature.toFixed(0)}K</span>
+                        <span className="text-white">{selectedPlanet1.temperature > 0 ? `${selectedPlanet1.temperature.toFixed(0)}K` : 'Unknown'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">{selectedPlanet2.name}:</span>
-                        <span className="text-white">{selectedPlanet2.temperature.toFixed(0)}K</span>
+                        <span className="text-white">{selectedPlanet2.temperature > 0 ? `${selectedPlanet2.temperature.toFixed(0)}K` : 'Unknown'}</span>
                       </div>
                       <div className="text-xs text-gray-500 mt-2">
-                        Earth-like: ~288K
+                        Sun-like: ~5778K
                       </div>
                     </div>
                   </div>
@@ -440,21 +577,139 @@ export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isO
 
                   <div className="bg-white/5 rounded-lg p-4">
                     <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                      <Target className="w-4 h-4 text-green-400" />
-                      Habitability Score
+                      <Clock className="w-4 h-4 text-green-400" />
+                      Orbital Period
                     </h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-400">{selectedPlanet1.name}:</span>
-                        <span className="text-white">{selectedPlanet1.habitabilityScore.toFixed(1)}/100</span>
+                        <span className="text-white">{selectedPlanet1.orbitalPeriod > 0 ? `${selectedPlanet1.orbitalPeriod.toFixed(1)} days` : 'Unknown'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">{selectedPlanet2.name}:</span>
-                        <span className="text-white">{selectedPlanet2.habitabilityScore.toFixed(1)}/100</span>
+                        <span className="text-white">{selectedPlanet2.orbitalPeriod > 0 ? `${selectedPlanet2.orbitalPeriod.toFixed(1)} days` : 'Unknown'}</span>
                       </div>
                       <div className="text-xs text-gray-500 mt-2">
-                        Higher is better
+                        Earth: 365.25 days
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Comparison Metrics */}
+                <div className="grid md:grid-cols-2 gap-4 mt-4">
+                  <div className="bg-white/5 rounded-lg p-4">
+                    <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                      <Target className="w-4 h-4 text-amber-400" />
+                      Biosignature Score
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">{selectedPlanet1.name}:</span>
+                        <span className="text-white">
+                          {selectedPlanet1.biosignatures.length > 0 ? 
+                            Math.min(selectedPlanet1.biosignatures.length * 25, 100) : 
+                            Math.round(selectedPlanet1.habitabilityScore * 10)
+                          }/100
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">{selectedPlanet2.name}:</span>
+                        <span className="text-white">
+                          {selectedPlanet2.biosignatures.length > 0 ? 
+                            Math.min(selectedPlanet2.biosignatures.length * 25, 100) : 
+                            Math.round(selectedPlanet2.habitabilityScore * 10)
+                          }/100
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2">
+                        Based on detected biosignatures or habitability analysis
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/5 rounded-lg p-4">
+                    <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-blue-400" />
+                      Surface Gravity
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">{selectedPlanet1.name}:</span>
+                        <span className="text-white">{selectedPlanet1.surfaceGravity.toFixed(2)}g</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">{selectedPlanet2.name}:</span>
+                        <span className="text-white">{selectedPlanet2.surfaceGravity.toFixed(2)}g</span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2">
+                        Earth: 1.00g
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Visual Comparison Bars */}
+                <div className="mt-6 space-y-4">
+                  <h4 className="text-white font-semibold text-lg text-center mb-4">Visual Comparison</h4>
+                  
+                  {/* Biosignature Score Comparison */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-gray-400">
+                      <span>{selectedPlanet1.name}</span>
+                      <span>Biosignature Score</span>
+                      <span>{selectedPlanet2.name}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 bg-gray-700 rounded-full h-3">
+                        <div 
+                          className="h-3 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full transition-all duration-1000"
+                          style={{ width: `${selectedPlanet1.biosignatures.length > 0 ? Math.min(selectedPlanet1.biosignatures.length * 25, 100) : Math.round(selectedPlanet1.habitabilityScore * 10)}%` }}
+                        />
+                      </div>
+                      <span className="text-white font-bold text-sm w-16 text-center">
+                        {selectedPlanet1.biosignatures.length > 0 ? 
+                          Math.min(selectedPlanet1.biosignatures.length * 25, 100) : 
+                          Math.round(selectedPlanet1.habitabilityScore * 10)
+                        }
+                      </span>
+                      <div className="flex-1 bg-gray-700 rounded-full h-3">
+                        <div 
+                          className="h-3 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full transition-all duration-1000"
+                          style={{ width: `${selectedPlanet2.biosignatures.length > 0 ? Math.min(selectedPlanet2.biosignatures.length * 25, 100) : Math.round(selectedPlanet2.habitabilityScore * 10)}%` }}
+                        />
+                      </div>
+                      <span className="text-white font-bold text-sm w-16 text-center">
+                        {selectedPlanet2.biosignatures.length > 0 ? 
+                          Math.min(selectedPlanet2.biosignatures.length * 25, 100) : 
+                          Math.round(selectedPlanet2.habitabilityScore * 10)
+                        }
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Radius Comparison */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-gray-400">
+                      <span>{selectedPlanet1.name}</span>
+                      <span>Radius (Earth = 1.0)</span>
+                      <span>{selectedPlanet2.name}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 bg-gray-700 rounded-full h-3">
+                        <div 
+                          className="h-3 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full transition-all duration-1000"
+                          style={{ width: `${Math.min(selectedPlanet1.radius * 20, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-white font-bold text-sm w-16 text-center">{selectedPlanet1.radius.toFixed(1)}⊕</span>
+                      <div className="flex-1 bg-gray-700 rounded-full h-3">
+                        <div 
+                          className="h-3 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full transition-all duration-1000"
+                          style={{ width: `${Math.min(selectedPlanet2.radius * 20, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-white font-bold text-sm w-16 text-center">{selectedPlanet2.radius.toFixed(1)}⊕</span>
                     </div>
                   </div>
                 </div>
@@ -463,8 +718,8 @@ export const PlanetComparison: React.FC<PlanetComparisonProps> = ({ planets, isO
                 <div className="mt-6 p-4 bg-blue-900/20 rounded-lg border border-blue-500/20">
                   <p className="text-blue-300 text-sm leading-relaxed">
                     <strong>Scientific Note:</strong> This comparison is based on current scientific models including 
-                    Kopparapu et al. (2013) habitable zone calculations, planetary characteristics analysis, and 
-                    potential biosignature indicators. Actual habitability depends on many factors not yet fully 
+                    biosignature analysis, atmospheric composition indicators, planetary characteristics analysis, and 
+                    potential life-supporting conditions. Actual biosignature potential depends on many factors not yet fully 
                     understood or observable with current technology.
                   </p>
                 </div>

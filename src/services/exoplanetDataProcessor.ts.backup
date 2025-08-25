@@ -1,0 +1,589 @@
+import Papa from 'papaparse';
+import {
+  calculateStellarLuminosity,
+  estimateStellarLuminosityFromTemperature,
+  calculateSemiMajorAxis,
+  calculateStellarFlux,
+  isInHabitableZone,
+  calculateEquilibriumTemperature,
+  calculatePlanetDensity,
+  calculateSurfaceGravity,
+  calculateEarthSimilarityIndex,
+  calculateComprehensiveHabitabilityScore,
+  estimateSpectralType,
+  calculateEscapeVelocity
+} from '../utils/scientificCalculations';
+
+// Core data interfaces for the NASA exoplanet dataset
+export interface RawExoplanetData {
+  pl_name: string;
+  hostname: string;
+  discoverymethod: string;
+  disc_year: string;
+  pl_orbper: string;
+  pl_rade: string;
+  pl_masse: string;
+  st_teff: string;
+  st_rad: string;
+  st_mass: string;
+  [key: string]: string; // Allow for additional columns
+}
+
+export interface ProcessedExoplanet {
+  // Basic identification
+  id: string;
+  name: string;
+  hostStarName: string;
+  
+  // Discovery information
+  discoveryYear: number;
+  discoveryMethod: string;
+  
+  // Planetary properties
+  orbitalPeriod: number; // days
+  radius: number; // Earth radii
+  mass: number; // Earth masses
+  density: number; // g/cm³
+  equilibriumTemperature: number; // Kelvin
+  
+  // Stellar properties
+  stellarTemperature: number; // Kelvin
+  stellarRadius: number; // Solar radii
+  stellarMass: number; // Solar masses
+  stellarLuminosity: number; // Solar luminosities
+  stellarMetallicity: number; // [Fe/H]
+  spectralType: string;
+  
+  // Orbital properties
+  semiMajorAxis: number; // AU
+  eccentricity: number;
+  inclination: number; // degrees
+  
+  // Derived properties
+  stellarFlux: number; // Earth flux units
+  habitableZonePosition: 'inner' | 'habitable' | 'outer' | 'unknown';
+  earthSimilarityIndex: number; // 0-1 scale
+  habitabilityScore: number; // 0-100 scale
+  planetClassification: string;
+  surfaceGravity: number; // Earth gravities
+  
+  // Validation flags
+  dataQuality: {
+    hasMass: boolean;
+    hasRadius: boolean;
+    hasTemperature: boolean;
+    hasStellarData: boolean;
+    isComplete: boolean;
+  };
+  
+  // Anomaly flags
+  anomalies: {
+    massOutlier: boolean;
+    radiusOutlier: boolean;
+    temperatureOutlier: boolean;
+    orbitalPeriodOutlier: boolean;
+  };
+}
+
+export interface DataValidationResult {
+  totalRecords: number;
+  validRecords: number;
+  invalidRecords: number;
+  anomalies: {
+    massOutliers: number;
+    radiusOutliers: number;
+    temperatureOutliers: number;
+    orbitalPeriodOutliers: number;
+  };
+  dataQuality: {
+    completeRecords: number;
+    partialRecords: number;
+    minimalRecords: number;
+  };
+}
+
+export class ExoplanetDataProcessor {
+  private static instance: ExoplanetDataProcessor;
+  private processedData: ProcessedExoplanet[] = [];
+  private validationResult: DataValidationResult | null = null;
+  private loaded = false;
+
+  static getInstance(): ExoplanetDataProcessor {
+    if (!ExoplanetDataProcessor.instance) {
+      ExoplanetDataProcessor.instance = new ExoplanetDataProcessor();
+    }
+    return ExoplanetDataProcessor.instance;
+  }
+
+  /**
+   * Load and process the NASA exoplanet dataset
+   */
+  async loadAndProcessDataset(): Promise<ProcessedExoplanet[]> {
+    if (this.loaded) {
+      return this.processedData;
+    }
+
+    try {
+      console.log('🚀 Loading NASA exoplanet dataset...');
+      
+      // Load CSV data
+      const rawData = await this.loadCSVData();
+      
+      // Validate and clean data
+      const validationResult = this.validateData(rawData);
+      this.validationResult = validationResult;
+      
+      // Process and transform data
+      this.processedData = this.processRawData(rawData);
+      
+      // Apply scientific calculations
+      this.applyScientificCalculations();
+      
+      // Classify planets
+      this.classifyPlanets();
+      
+      this.loaded = true;
+      
+      console.log(`✅ Dataset processed successfully: ${this.processedData.length} exoplanets`);
+      console.log('📊 Validation results:', validationResult);
+      
+      return this.processedData;
+      
+    } catch (error) {
+      console.error('❌ Error processing exoplanet dataset:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load CSV data from the backend
+   */
+  private async loadCSVData(): Promise<RawExoplanetData[]> {
+    try {
+      const response = await fetch('/backend/exoplanets.csv');
+      if (!response.ok) {
+        throw new Error(`Failed to load CSV: ${response.status}`);
+      }
+
+      const csvText = await response.text();
+      
+      return new Promise((resolve, reject) => {
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            if (results.errors.length > 0) {
+              console.warn('⚠️ CSV parsing warnings:', results.errors);
+            }
+            resolve(results.data as RawExoplanetData[]);
+          },
+          error: (error) => {
+            reject(new Error(`CSV parsing error: ${error.message}`));
+          }
+        });
+      });
+      
+    } catch (error) {
+      throw new Error(`Failed to load CSV data: ${error}`);
+    }
+  }
+
+  /**
+   * Validate raw data for scientific reasonableness
+   */
+  private validateData(rawData: RawExoplanetData[]): DataValidationResult {
+    const result: DataValidationResult = {
+      totalRecords: rawData.length,
+      validRecords: 0,
+      invalidRecords: 0,
+      anomalies: {
+        massOutliers: 0,
+        radiusOutliers: 0,
+        temperatureOutliers: 0,
+        orbitalPeriodOutliers: 0
+      },
+      dataQuality: {
+        completeRecords: 0,
+        partialRecords: 0,
+        minimalRecords: 0
+      }
+    };
+
+    for (const record of rawData) {
+      let isValid = true;
+      let hasMass = false;
+      let hasRadius = false;
+      let hasTemperature = false;
+      let hasStellarData = false;
+
+      // Check for mass outliers (reasonable range: 0.01 - 1000 Earth masses)
+      if (record.pl_masse && !isNaN(Number(record.pl_masse))) {
+        const mass = Number(record.pl_masse);
+        if (mass < 0.01 || mass > 1000) {
+          result.anomalies.massOutliers++;
+        }
+        hasMass = true;
+      }
+
+      // Check for radius outliers (reasonable range: 0.1 - 50 Earth radii)
+      if (record.pl_rade && !isNaN(Number(record.pl_rade))) {
+        const radius = Number(record.pl_rade);
+        if (radius < 0.1 || radius > 50) {
+          result.anomalies.radiusOutliers++;
+        }
+        hasRadius = true;
+      }
+
+      // Check for temperature outliers (reasonable range: 50 - 5000 K)
+      if (record.st_teff && !isNaN(Number(record.st_teff))) {
+        const temp = Number(record.st_teff);
+        if (temp < 50 || temp > 5000) {
+          result.anomalies.temperatureOutliers++;
+        }
+        hasTemperature = true;
+      }
+
+      // Check for orbital period outliers (reasonable range: 0.1 - 10000 days)
+      if (record.pl_orbper && !isNaN(Number(record.pl_orbper))) {
+        const period = Number(record.pl_orbper);
+        if (period < 0.1 || period > 10000) {
+          result.anomalies.orbitalPeriodOutliers++;
+        }
+      }
+
+      // Check stellar data availability
+      if (record.st_teff || record.st_rad || record.st_mass) {
+        hasStellarData = true;
+      }
+
+      // Determine data quality level
+      const dataPoints = [hasMass, hasRadius, hasTemperature, hasStellarData].filter(Boolean).length;
+      if (dataPoints >= 3) {
+        result.dataQuality.completeRecords++;
+      } else if (dataPoints >= 2) {
+        result.dataQuality.partialRecords++;
+      } else {
+        result.dataQuality.minimalRecords++;
+      }
+
+      if (isValid) {
+        result.validRecords++;
+      } else {
+        result.invalidRecords++;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Process and transform raw data into structured format
+   */
+  private processRawData(rawData: RawExoplanetData[]): ProcessedExoplanet[] {
+    return rawData
+      .filter(record => record.pl_name && record.pl_name.trim() !== '')
+      .map(record => this.transformRecord(record))
+      .filter(planet => planet !== null) as ProcessedExoplanet[];
+  }
+
+  /**
+   * Transform a single raw record into a processed exoplanet
+   */
+  private transformRecord(record: RawExoplanetData): ProcessedExoplanet | null {
+    try {
+      // Basic validation
+      if (!record.pl_name || !record.hostname) {
+        return null;
+      }
+
+      const planet: ProcessedExoplanet = {
+        // Basic identification
+        id: this.generateId(record.pl_name),
+        name: record.pl_name.trim(),
+        hostStarName: record.hostname.trim(),
+        
+        // Discovery information
+        discoveryYear: this.parseNumber(record.disc_year),
+        discoveryMethod: record.discoverymethod || 'Unknown',
+        
+        // Planetary properties
+        orbitalPeriod: this.parseNumber(record.pl_orbper),
+        radius: this.parseNumber(record.pl_rade),
+        mass: this.parseNumber(record.pl_masse),
+        density: this.calculateDensity(),
+        equilibriumTemperature: this.estimateEquilibriumTemperature(),
+        
+        // Stellar properties
+        stellarTemperature: this.parseNumber(record.st_teff),
+        stellarRadius: this.parseNumber(record.st_rad),
+        stellarMass: this.parseNumber(record.st_mass),
+        stellarLuminosity: this.calculateStellarLuminosity(),
+        stellarMetallicity: 0, // Not available in current dataset
+        spectralType: this.estimateSpectralType(),
+        
+        // Orbital properties
+        semiMajorAxis: this.calculateSemiMajorAxis(),
+        eccentricity: 0, // Not available in current dataset
+        inclination: 0, // Not available in current dataset
+        
+        // Derived properties (will be calculated later)
+        stellarFlux: 0,
+        habitableZonePosition: 'unknown',
+        earthSimilarityIndex: 0,
+        habitabilityScore: 0,
+        planetClassification: 'Unknown',
+        
+        // Data quality flags
+        dataQuality: {
+          hasMass: !!record.pl_masse && !isNaN(Number(record.pl_masse)),
+          hasRadius: !!record.pl_rade && !isNaN(Number(record.pl_rade)),
+          hasTemperature: !!record.st_teff && !isNaN(Number(record.st_teff)),
+          hasStellarData: !!(record.st_teff || record.st_rad || record.st_mass),
+          isComplete: false
+        },
+        
+        // Anomaly flags
+        anomalies: {
+          massOutlier: false,
+          radiusOutlier: false,
+          temperatureOutlier: false,
+          orbitalPeriodOutlier: false
+        }
+      };
+
+      // Set data quality completeness
+      planet.dataQuality.isComplete = planet.dataQuality.hasMass && 
+                                     planet.dataQuality.hasRadius && 
+                                     planet.dataQuality.hasTemperature && 
+                                     planet.dataQuality.hasStellarData;
+
+      // Check for anomalies
+      planet.anomalies.massOutlier = planet.mass < 0.01 || planet.mass > 1000;
+      planet.anomalies.radiusOutlier = planet.radius < 0.1 || planet.radius > 50;
+      planet.anomalies.temperatureOutlier = planet.stellarTemperature < 50 || planet.stellarTemperature > 5000;
+      planet.anomalies.orbitalPeriodOutlier = planet.orbitalPeriod < 0.1 || planet.orbitalPeriod > 10000;
+
+      return planet;
+
+    } catch (error) {
+      console.warn(`⚠️ Failed to transform record for ${record.pl_name}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Apply scientific calculations to derived properties
+   */
+  private applyScientificCalculations(): void {
+    for (const planet of this.processedData) {
+      // Calculate stellar luminosity
+      if (planet.stellarTemperature > 0 && planet.stellarRadius > 0) {
+        planet.stellarLuminosity = calculateStellarLuminosity(planet.stellarTemperature, planet.stellarRadius);
+      } else if (planet.stellarTemperature > 0) {
+        planet.stellarLuminosity = estimateStellarLuminosityFromTemperature(planet.stellarTemperature);
+      }
+      
+      // Calculate semi-major axis from orbital period
+      if (planet.orbitalPeriod > 0 && planet.stellarMass > 0) {
+        planet.semiMajorAxis = calculateSemiMajorAxis(planet.orbitalPeriod, planet.stellarMass);
+      }
+      
+      // Calculate stellar flux
+      planet.stellarFlux = calculateStellarFlux(planet.stellarLuminosity, planet.semiMajorAxis);
+      
+      // Determine habitable zone position
+      planet.habitableZonePosition = isInHabitableZone(planet.semiMajorAxis, planet.stellarLuminosity, planet.stellarTemperature);
+      
+      // Calculate equilibrium temperature
+      planet.equilibriumTemperature = calculateEquilibriumTemperature(planet.stellarTemperature, planet.stellarRadius, planet.semiMajorAxis);
+      
+      // Calculate density
+      if (planet.mass > 0 && planet.radius > 0) {
+        planet.density = calculatePlanetDensity(planet.mass, planet.radius);
+      }
+      
+      // Calculate surface gravity
+      if (planet.mass > 0 && planet.radius > 0) {
+        planet.surfaceGravity = calculateSurfaceGravity(planet.mass, planet.radius);
+      }
+      
+      // Estimate spectral type
+      planet.spectralType = estimateSpectralType(planet.stellarTemperature);
+      
+      // Calculate Earth Similarity Index
+      planet.earthSimilarityIndex = calculateEarthSimilarityIndex(
+        planet.radius,
+        planet.mass,
+        planet.density,
+        calculateEscapeVelocity(planet.mass, planet.radius),
+        planet.equilibriumTemperature,
+        planet.stellarFlux
+      );
+      
+      // Calculate comprehensive habitability score
+      planet.habitabilityScore = calculateComprehensiveHabitabilityScore(planet);
+    }
+  }
+
+  /**
+   * Classify planets based on their properties
+   */
+  private classifyPlanets(): void {
+    for (const planet of this.processedData) {
+      planet.planetClassification = this.classifyPlanet(planet);
+    }
+  }
+
+  // Helper methods
+  private generateId(name: string): string {
+    return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  private parseNumber(value: string): number {
+    if (!value || value.trim() === '') return 0;
+    const parsed = Number(value);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  private calculateDensity(): number {
+    // This will be calculated later when we have both mass and radius
+    return 0;
+  }
+
+  private estimateEquilibriumTemperature(): number {
+    // This will be calculated later when we have stellar data and orbital distance
+    return 0;
+  }
+
+  private calculateStellarLuminosity(): number {
+    // This will be calculated later when we have both stellar temperature and radius
+    return 0;
+  }
+
+  private estimateSpectralType(): string {
+    // This will be calculated later when we have stellar temperature
+    return 'Unknown';
+  }
+
+  private calculateSemiMajorAxis(): number {
+    // This will be calculated later when we have both orbital period and stellar mass
+    return 0;
+  }
+
+
+
+
+
+
+
+
+    
+    // Bonus for being in habitable zone
+    if (planet.habitableZonePosition === 'habitable') {
+      score += 25;
+    }
+    
+    // Bonus for Earth-like size
+    if (planet.radius >= 0.8 && planet.radius <= 1.4) {
+      score += 15;
+    }
+    
+    // Bonus for Earth-like mass
+    if (planet.mass >= 0.5 && planet.mass <= 2.0) {
+      score += 10;
+    }
+    
+    return Math.min(100, Math.max(0, score));
+  }
+
+  private classifyPlanet(planet: ProcessedExoplanet): string {
+    if (planet.radius === 0 || planet.mass === 0) return 'Unknown';
+    
+    // Classification based on radius and mass
+    if (planet.radius < 0.5) return 'Sub-Earth';
+    if (planet.radius < 1.25) return 'Terrestrial';
+    if (planet.radius < 2.0) return 'Super-Earth';
+    if (planet.radius < 6.0) return 'Mini-Neptune';
+    if (planet.radius < 12.0) return 'Neptune-like';
+    return 'Gas Giant';
+  }
+
+  // Public getters
+  getProcessedData(): ProcessedExoplanet[] {
+    return this.processedData;
+  }
+
+  getValidationResult(): DataValidationResult | null {
+    return this.validationResult;
+  }
+
+  isLoaded(): boolean {
+    return this.loaded;
+  }
+
+  /**
+   * Get planets filtered by various criteria
+   */
+  getPlanetsByCriteria(criteria: {
+    massRange?: [number, number];
+    radiusRange?: [number, number];
+    discoveryMethod?: string;
+    habitableZoneOnly?: boolean;
+    minHabitabilityScore?: number;
+  }): ProcessedExoplanet[] {
+    return this.processedData.filter(planet => {
+      if (criteria.massRange && (planet.mass < criteria.massRange[0] || planet.mass > criteria.massRange[1])) {
+        return false;
+      }
+      
+      if (criteria.radiusRange && (planet.radius < criteria.radiusRange[0] || planet.radius > criteria.radiusRange[1])) {
+        return false;
+      }
+      
+      if (criteria.discoveryMethod && planet.discoveryMethod !== criteria.discoveryMethod) {
+        return false;
+      }
+      
+      if (criteria.habitableZoneOnly && planet.habitableZonePosition !== 'habitable') {
+        return false;
+      }
+      
+      if (criteria.minHabitabilityScore && planet.habitabilityScore < criteria.minHabitabilityScore) {
+        return false;
+      }
+      
+      return true;
+    });
+  }
+
+  /**
+   * Get summary statistics
+   */
+  getSummaryStatistics() {
+    const total = this.processedData.length;
+    const byDiscoveryMethod = this.processedData.reduce((acc, planet) => {
+      acc[planet.discoveryMethod] = (acc[planet.discoveryMethod] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const byClassification = this.processedData.reduce((acc, planet) => {
+      acc[planet.planetClassification] = (acc[planet.planetClassification] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const habitableZoneCount = this.processedData.filter(p => p.habitableZonePosition === 'habitable').length;
+    const highHabitabilityCount = this.processedData.filter(p => p.habitabilityScore >= 70).length;
+    
+    return {
+      total,
+      byDiscoveryMethod,
+      byClassification,
+      habitableZoneCount,
+      highHabitabilityCount,
+      averageHabitabilityScore: this.processedData.reduce((sum, p) => sum + p.habitabilityScore, 0) / total
+    };
+  }
+}
+
+// Export singleton instance
+export const exoplanetDataProcessor = ExoplanetDataProcessor.getInstance();

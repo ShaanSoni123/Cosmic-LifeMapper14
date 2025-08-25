@@ -1,5 +1,7 @@
 // Enhanced NASA Exoplanet Archive API Service
 const NASA_BASE_URL = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync";
+// Use a more reliable CORS proxy that supports POST requests
+const CORS_PROXY = "https://corsproxy.io/?";
 
 export interface NASAExoplanetData {
   pl_name: string;
@@ -55,7 +57,6 @@ export interface NASAExoplanetData {
   st_nphot?: number;
   st_nrvc?: number;
   st_nspec?: number;
-  pl_nespec?: number;
   pl_ntranspec?: number;
   pl_ndispec?: number;
   ttv_flag?: number;
@@ -103,6 +104,42 @@ class NASAExoplanetService {
     return null;
   }
 
+  // Get total count of all confirmed exoplanets
+  async getTotalPlanetCount(): Promise<number> {
+    const cacheKey = 'total_count';
+    const cached = this.getCache(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const countQuery = `SELECT COUNT(*) as total FROM pscomppars WHERE pl_name IS NOT NULL`;
+      const response = await fetch(CORS_PROXY + encodeURIComponent(NASA_BASE_URL), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'CosmicLifeMapper/1.0 (Educational Research)'
+        },
+        body: new URLSearchParams({
+          query: countQuery,
+          format: 'json'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`NASA API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const total = data[0]?.total || 0;
+      
+      this.setCache(cacheKey, total);
+      return total;
+
+    } catch (error) {
+      console.error('Error fetching total planet count:', error);
+      return 0;
+    }
+  }
+
   async getAllPlanets(page: number = 1, perPage: number = 100): Promise<PaginatedNASAResponse> {
     const cacheKey = `planets_${page}_${perPage}`;
     const cached = this.getCache(cacheKey);
@@ -129,7 +166,7 @@ class NASAExoplanetService {
       const offset = (page - 1) * perPage;
       const limitedQuery = `${query} OFFSET ${offset} LIMIT ${perPage}`;
 
-      const response = await fetch(NASA_BASE_URL, {
+      const response = await fetch(CORS_PROXY + encodeURIComponent(NASA_BASE_URL), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -147,22 +184,8 @@ class NASAExoplanetService {
 
       const data = await response.json();
       
-      // Get total count
-      const countQuery = `SELECT COUNT(*) as total FROM pscomppars WHERE pl_name IS NOT NULL`;
-      const countResponse = await fetch(NASA_BASE_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'CosmicLifeMapper/1.0 (Educational Research)'
-        },
-        body: new URLSearchParams({
-          query: countQuery,
-          format: 'json'
-        })
-      });
-
-      const countData = await countResponse.json();
-      const total = countData[0]?.total || 0;
+      // Get total count using the optimized method
+      const total = await this.getTotalPlanetCount();
       const totalPages = Math.ceil(total / perPage);
 
       const result: PaginatedNASAResponse = {
@@ -203,7 +226,7 @@ class NASAExoplanetService {
         LIMIT ${limit}
       `;
 
-      const response = await fetch(NASA_BASE_URL, {
+      const response = await fetch(CORS_PROXY + encodeURIComponent(NASA_BASE_URL), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -243,7 +266,7 @@ class NASAExoplanetService {
         WHERE pl_name = '${planetName.replace(/'/g, "''")}'
       `;
 
-      const response = await fetch(NASA_BASE_URL, {
+      const response = await fetch(CORS_PROXY + encodeURIComponent(NASA_BASE_URL), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -274,6 +297,182 @@ class NASAExoplanetService {
     }
   }
 
+  // Get potentially habitable planets based on scientific criteria
+  async getPotentiallyHabitablePlanets(limit: number = 100): Promise<NASAExoplanetData[]> {
+    const cacheKey = `habitable_${limit}`;
+    const cached = this.getCache(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const habitableQuery = `
+        SELECT 
+          pl_name, pl_rade, pl_bmasse, pl_orbper, pl_eqt, pl_orbsmax, pl_orbeccen,
+          pl_insol, pl_dens, pl_trandep, pl_tranmid, pl_controv_flag,
+          st_teff, st_age, st_mass, st_dens, st_rad, st_spectype, st_lum, st_logg, st_met,
+          sy_snum, sy_pnum, sy_mnum, sy_dist, sy_vmag, sy_kmag, sy_gaiamag,
+          disc_year, discoverymethod, disc_locale, disc_facility, disc_telescope, 
+          disc_instrument, disc_refname, disc_pubdate,
+          ra, dec, glat, glon, elat, elon,
+          pl_pubdate, releasedate, pl_nnotes,
+          ttv_flag, ptv_flag, tran_flag, rv_flag, ast_flag, obm_flag, micro_flag, etv_flag, ima_flag, dkin_flag
+        FROM pscomppars 
+        WHERE pl_name IS NOT NULL 
+        AND pl_rade IS NOT NULL 
+        AND pl_bmasse IS NOT NULL 
+        AND pl_eqt IS NOT NULL 
+        AND pl_insol IS NOT NULL
+        AND pl_rade >= 0.5 
+        AND pl_rade <= 2.5
+        AND pl_bmasse >= 0.1 
+        AND pl_bmasse <= 10.0
+        AND pl_eqt >= 150 
+        AND pl_eqt <= 400
+        AND pl_insol >= 0.2 
+        AND pl_insol <= 2.0
+        ORDER BY 
+          CASE 
+            WHEN pl_rade BETWEEN 0.8 AND 2.0 AND pl_bmasse BETWEEN 0.5 AND 5.0 
+                 AND pl_eqt BETWEEN 200 AND 350 AND pl_insol BETWEEN 0.3 AND 1.5 
+            THEN 1
+            WHEN pl_rade BETWEEN 0.5 AND 3.0 AND pl_bmasse BETWEEN 0.1 AND 10.0 
+                 AND pl_eqt BETWEEN 150 AND 400 AND pl_insol BETWEEN 0.2 AND 2.0 
+            THEN 2
+            ELSE 3
+          END,
+          pl_eqt ASC
+        LIMIT ${limit}
+      `;
+
+      const response = await fetch(CORS_PROXY + encodeURIComponent(NASA_BASE_URL), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'CosmicLifeMapper/1.0 (Educational Research)'
+        },
+        body: new URLSearchParams({
+          query: habitableQuery,
+          format: 'json'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`NASA API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const result = data || [];
+      
+      this.setCache(cacheKey, result);
+      return result;
+
+    } catch (error) {
+      console.error('Error fetching potentially habitable planets:', error);
+      return [];
+    }
+  }
+
+  // Get planets by discovery method
+  async getPlanetsByDiscoveryMethod(method: string, limit: number = 100): Promise<NASAExoplanetData[]> {
+    const cacheKey = `method_${method}_${limit}`;
+    const cached = this.getCache(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const methodQuery = `
+        SELECT 
+          pl_name, pl_rade, pl_bmasse, pl_orbper, pl_eqt, pl_orbsmax, pl_orbeccen,
+          pl_insol, pl_dens, pl_trandep, pl_tranmid, pl_controv_flag,
+          st_teff, st_age, st_mass, st_dens, st_rad, st_spectype, st_lum, st_logg, st_met,
+          sy_snum, sy_pnum, sy_mnum, sy_dist, sy_vmag, sy_kmag, sy_gaiamag,
+          disc_year, discoverymethod, disc_locale, disc_facility, disc_telescope, 
+          disc_instrument, disc_refname, disc_pubdate,
+          ra, dec, glat, glon, elat, elon,
+          pl_pubdate, releasedate, pl_nnotes,
+          ttv_flag, ptv_flag, tran_flag, rv_flag, ast_flag, obm_flag, micro_flag, etv_flag, ima_flag, dkin_flag
+        FROM pscomppars 
+        WHERE pl_name IS NOT NULL 
+        AND LOWER(discoverymethod) = LOWER('${method.replace(/'/g, "''")}')
+        ORDER BY disc_year DESC, pl_name ASC
+        LIMIT ${limit}
+      `;
+
+      const response = await fetch(CORS_PROXY + encodeURIComponent(NASA_BASE_URL), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'CosmicLifeMapper/1.0 (Educational Research)'
+        },
+        body: new URLSearchParams({
+          query: methodQuery,
+          format: 'json'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`NASA API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const result = data || [];
+      
+      this.setCache(cacheKey, result);
+      return result;
+
+    } catch (error) {
+      console.error(`Error fetching planets by discovery method ${method}:`, error);
+      return [];
+    }
+  }
+
+  // Get discovery methods statistics
+  async getDiscoveryMethodsStats(): Promise<{ [key: string]: number }> {
+    const cacheKey = 'discovery_methods_stats';
+    const cached = this.getCache(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const statsQuery = `
+        SELECT discoverymethod, COUNT(*) as count
+        FROM pscomppars 
+        WHERE pl_name IS NOT NULL AND discoverymethod IS NOT NULL
+        GROUP BY discoverymethod
+        ORDER BY count DESC
+      `;
+
+      const response = await fetch(CORS_PROXY + encodeURIComponent(NASA_BASE_URL), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'CosmicLifeMapper/1.0 (Educational Research)'
+        },
+        body: new URLSearchParams({
+          query: statsQuery,
+          format: 'json'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`NASA API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const stats: { [key: string]: number } = {};
+      
+      data.forEach((row: any) => {
+        if (row.discoverymethod && row.count) {
+          stats[row.discoverymethod] = parseInt(row.count);
+        }
+      });
+      
+      this.setCache(cacheKey, stats);
+      return stats;
+
+    } catch (error) {
+      console.error('Error fetching discovery methods stats:', error);
+      return {};
+    }
+  }
+
   async getLatestDiscoveries(limit: number = 50): Promise<NASAExoplanetData[]> {
     const cacheKey = `latest_${limit}`;
     const cached = this.getCache(cacheKey);
@@ -292,7 +491,7 @@ class NASAExoplanetService {
         LIMIT ${limit}
       `;
 
-      const response = await fetch(NASA_BASE_URL, {
+      const response = await fetch(CORS_PROXY + encodeURIComponent(NASA_BASE_URL), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -345,7 +544,7 @@ class NASAExoplanetService {
         GROUP BY discoverymethod, disc_year, disc_facility
       `;
 
-      const response = await fetch(NASA_BASE_URL, {
+      const response = await fetch(CORS_PROXY + encodeURIComponent(NASA_BASE_URL), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
